@@ -90,9 +90,6 @@ func main () () {
 		}
 	}
 	
-	printRecordStatistics (_recordsA)
-	printRecordStatistics (_recordsB)
-	
 	var _diff *diff
 	if _diff_, _error := processDiff (_recordsA, _recordsB); _error != nil {
 		abort ("failed while diff-ing the record set", _error)
@@ -100,8 +97,14 @@ func main () () {
 		_diff = _diff_
 	}
 	
-	printDiffStatistics (_diff)
-	printDiffEntries (_diff)
+	if true {
+		printRecordStatistics (_recordsA)
+		printRecordStatistics (_recordsB)
+		printDiffStatistics (_diff)
+	}
+	if true {
+		printDiffEntries (_diff)
+	}
 }
 
 
@@ -126,7 +129,7 @@ func printDiffStatistics (_diff *diff) () {
 	fmt.Fprintf (os.Stdout, "##   * unique paths in (A)  : %7d\n", _diff.statistics.uniquePathsInA)
 	fmt.Fprintf (os.Stdout, "##   * unique paths in (B)  : %7d\n", _diff.statistics.uniquePathsInB)
 	fmt.Fprintf (os.Stdout, "##   * renamed paths in (A) : %7d\n", _diff.statistics.renamedPathsInA)
-	fmt.Fprintf (os.Stdout, "##   * renamed paths in (B) : %7d\n", _diff.statistics.renamedPathsInA)
+	fmt.Fprintf (os.Stdout, "##   * renamed paths in (B) : %7d\n", _diff.statistics.renamedPathsInB)
 	fmt.Fprintf (os.Stdout, "##   * same paths in both   : %7d\n", _diff.statistics.samePaths)
 	fmt.Fprintf (os.Stdout, "##     * matching paths     : %7d\n", _diff.statistics.matchingPaths)
 	fmt.Fprintf (os.Stdout, "##     * conflicting paths  : %7d\n", _diff.statistics.conflictingPaths)
@@ -136,51 +139,75 @@ func printDiffStatistics (_diff *diff) () {
 
 func printDiffEntries (_diff *diff) () {
 	
-	fmt.Fprintf (os.Stdout, "## All diff entries\n")
-	fmt.Fprintf (os.Stdout, "##   * (A) -> `%s`\n", _diff.recordsA.name)
-	fmt.Fprintf (os.Stdout, "##   * (B) -> `%s`\n", _diff.recordsB.name)
-	fmt.Fprintf (os.Stdout, "##\n")
-	for _, _entry := range _diff.entries {
-		printDiffEntry (_diff, &_entry, true, true, true)
-	}
-	fmt.Fprintf (os.Stdout, "##\n")
-	
-	fmt.Fprintf (os.Stdout, "## All diff entries unique for (A)\n")
-	fmt.Fprintf (os.Stdout, "##   * (A) -> `%s`\n", _diff.recordsA.name)
-	fmt.Fprintf (os.Stdout, "##   * unique hashes in (A) : %7d\n", _diff.statistics.uniqueHashesInA)
-	fmt.Fprintf (os.Stdout, "##\n")
-	for _, _entry := range _diff.entries {
-		if (_entry.status != unique) || (_entry.source != _diff.recordsA) {
-			continue
+	if true {
+		fmt.Fprintf (os.Stdout, "## All diff entries conflicting\n")
+		fmt.Fprintf (os.Stdout, "##   * (A) -> `%s`\n", _diff.recordsA.name)
+		fmt.Fprintf (os.Stdout, "##   * (B) -> `%s`\n", _diff.recordsB.name)
+		fmt.Fprintf (os.Stdout, "##   * conflicting paths    : %7d\n", _diff.statistics.conflictingPaths)
+		fmt.Fprintf (os.Stdout, "##\n")
+		for _, _entry := range _diff.entries {
+			if _entry.status != conflicting {
+				continue
+			}
+			printDiffEntry (_diff, &_entry, false, false, false)
 		}
-		printDiffEntry (_diff, &_entry, false, false, false)
+		fmt.Fprintf (os.Stdout, "##\n")
 	}
-	fmt.Fprintf (os.Stdout, "##\n")
 	
-	fmt.Fprintf (os.Stdout, "## All diff entries unique for (B)\n")
-	fmt.Fprintf (os.Stdout, "##   * (B) -> `%s`\n", _diff.recordsB.name)
-	fmt.Fprintf (os.Stdout, "##   * unique hashes in (B) : %7d\n", _diff.statistics.uniqueHashesInB)
-	fmt.Fprintf (os.Stdout, "##\n")
-	for _, _entry := range _diff.entries {
-		if (_entry.status != unique) || (_entry.source != _diff.recordsB) {
-			continue
+	if true {
+		fmt.Fprintf (os.Stdout, "## All diff entries unique for (A)\n")
+		fmt.Fprintf (os.Stdout, "##   * (A) -> `%s`\n", _diff.recordsA.name)
+		fmt.Fprintf (os.Stdout, "##   * unique hashes in (A) : %7d\n", _diff.statistics.uniqueHashesInA)
+		fmt.Fprintf (os.Stdout, "##\n")
+		for _, _entry := range _diff.entries {
+			if (_entry.status != unique) || (_entry.source != _diff.recordsA) {
+				continue
+			}
+			printDiffEntry (_diff, &_entry, false, false, false)
 		}
-		printDiffEntry (_diff, &_entry, false, false, false)
+		fmt.Fprintf (os.Stdout, "##\n")
 	}
-	fmt.Fprintf (os.Stdout, "##\n")
 	
-	fmt.Fprintf (os.Stdout, "## All diff entries conflicting\n")
-	fmt.Fprintf (os.Stdout, "##   * (A) -> `%s`\n", _diff.recordsA.name)
-	fmt.Fprintf (os.Stdout, "##   * (B) -> `%s`\n", _diff.recordsB.name)
-	fmt.Fprintf (os.Stdout, "##   * conflicting paths    : %7d\n", _diff.statistics.conflictingPaths)
-	fmt.Fprintf (os.Stdout, "##\n")
-	for _, _entry := range _diff.entries {
-		if _entry.status != conflicting {
-			continue
+	if true {
+		fmt.Fprintf (os.Stdout, "## All diff entries unique for (B)\n")
+		fmt.Fprintf (os.Stdout, "##   * (B) -> `%s`\n", _diff.recordsB.name)
+		fmt.Fprintf (os.Stdout, "##   * unique hashes in (B) : %7d\n", _diff.statistics.uniqueHashesInB)
+		fmt.Fprintf (os.Stdout, "##\n")
+		for _, _entry := range _diff.entries {
+			if (_entry.status != unique) || (_entry.source != _diff.recordsB) {
+				continue
+			}
+			printDiffEntry (_diff, &_entry, false, false, false)
 		}
-		printDiffEntry (_diff, &_entry, false, false, false)
+		fmt.Fprintf (os.Stdout, "##\n")
 	}
-	fmt.Fprintf (os.Stdout, "##\n")
+	
+	if true {
+		fmt.Fprintf (os.Stdout, "## All diff entries renamed\n")
+		fmt.Fprintf (os.Stdout, "##   * (A) -> `%s`\n", _diff.recordsA.name)
+		fmt.Fprintf (os.Stdout, "##   * (B) -> `%s`\n", _diff.recordsB.name)
+		fmt.Fprintf (os.Stdout, "##   * renamed paths in (A) : %7d\n", _diff.statistics.renamedPathsInA)
+		fmt.Fprintf (os.Stdout, "##   * renamed paths in (B) : %7d\n", _diff.statistics.renamedPathsInB)
+		fmt.Fprintf (os.Stdout, "##\n")
+		for _, _entry := range _diff.entries {
+			if _entry.status != renamed {
+				continue
+			}
+			printDiffEntry (_diff, &_entry, false, false, false)
+		}
+		fmt.Fprintf (os.Stdout, "##\n")
+	}
+	
+	if false {
+		fmt.Fprintf (os.Stdout, "## All diff entries\n")
+		fmt.Fprintf (os.Stdout, "##   * (A) -> `%s`\n", _diff.recordsA.name)
+		fmt.Fprintf (os.Stdout, "##   * (B) -> `%s`\n", _diff.recordsB.name)
+		fmt.Fprintf (os.Stdout, "##\n")
+		for _, _entry := range _diff.entries {
+			printDiffEntry (_diff, &_entry, true, true, true)
+		}
+		fmt.Fprintf (os.Stdout, "##\n")
+	}
 }
 
 
@@ -453,29 +480,3 @@ func abort (_message string, _error error) () {
 var ignoredLine *regexp.Regexp = regexp.MustCompile (`(^#.*$)|(^[^\t ]*$)`)
 var md5RecordLine *regexp.Regexp = regexp.MustCompile (`^([0-9a-f]{32}) \*(.+)$`)
 
-
-/*
-type stringHeap []string
-
-func (_index *stringHeap) Push (_value interface{}) () {
-	*_index = append (*_index, _value.(string))
-}
-
-func (_index *stringHeap) Pop () (interface{}) {
-	_value := _index[len (_index) - 1]
-	*_index = _index[0 : len (_index) - 1]
-	return _value
-}
-
-func (_index *stringHeap) Len () (int) {
-	return len (_index)
-}
-
-func (_index *stringHeap) Less (i int, j int) (bool) {
-	return _index[i] < _index[j]
-}
-
-func (_index *stringHeap) Swap (i int, j int) () {
-	_index[i], _index[j] = _index[j], _index[i]
-}
-*/
