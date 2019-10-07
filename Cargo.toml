@@ -20,3 +20,10 @@ path = "./sources/md5-cpio.rs"
 name = "md5-diff"
 path = "./sources/md5-diff.rs"
 
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = true
+debug = false
+incremental = false
+
