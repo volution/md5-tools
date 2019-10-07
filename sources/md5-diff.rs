@@ -51,9 +51,9 @@ struct SourceRecord {
 	line : usize,
 }
 
-struct SourceIndex {
-	by_hash : HashMap<String, Vec<usize>>,
-	by_path : HashMap<PathBuf, Vec<usize>>,
+struct SourceIndex <'a> {
+	by_hash : HashMap<&'a String, Vec<&'a SourceRecord>>,
+	by_path : HashMap<&'a PathBuf, Vec<&'a SourceRecord>>,
 }
 
 struct SourceStatistics {
@@ -70,11 +70,11 @@ struct SourceStatistics {
 }
 
 
-struct Diff {
-	hashes : Vec<String>,
-	paths : Vec<PathBuf>,
-	by_hash : HashMap<String, DiffEntry<PathBuf>>,
-	by_path : HashMap<PathBuf, DiffEntry<String>>,
+struct Diff <'a> {
+	hashes : Vec<&'a String>,
+	paths : Vec<&'a PathBuf>,
+	by_hash : HashMap<&'a String, DiffEntry<&'a PathBuf>>,
+	by_path : HashMap<&'a PathBuf, DiffEntry<&'a String>>,
 	by_hash_statistics : DiffStatistics,
 	by_path_statistics : DiffStatistics,
 }
@@ -125,10 +125,12 @@ fn main () -> (Result<(), io::Error>) {
 	eprintln! ("[ii] [b89979a2]  analyzing...");
 	let _diff = diff (&_source_left, &_index_left, &_source_right, &_index_right);
 	
+	eprintln! ("[ii] [92d696c3]  reporting statistics...");
 	report_source_statistics ('A', &_source_left, &_statistics_left);
 	report_source_statistics ('B', &_source_right, &_statistics_right);
 	report_diff_statistics ('A', 'B', &_diff);
 	
+	eprintln! ("[ii] [eedb34f8]  reporting details...");
 	report_diff_entries ('A', 'B', &_diff);
 	
 	return Ok (());
@@ -252,7 +254,7 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff) -> 
 	
 	if true {
 		for _hash in _diff.hashes.iter () {
-			if _hash == hash_for_empty {
+			if *_hash == hash_for_empty {
 				continue;
 			}
 			match _diff.by_hash.get (_hash) .unwrap () {
@@ -283,9 +285,9 @@ fn load (_path : & Path) -> (Result<Source, io::Error>) {
 	eprintln! ("[ii] [318323ed]  loading `{}`...", _path.display ());
 	
 	let _file = fs::File::open (_path) ?;
-	let mut _stream = io::BufReader::new (_file);
+	let mut _stream = io::BufReader::with_capacity (16 * 1024 * 1024, _file);
 	
-	let mut _records = Vec::with_capacity (1024);
+	let mut _records = Vec::with_capacity (128 * 1024);
 	
 	{
 		let mut _buffer = Vec::with_capacity (8 * 1024);
@@ -348,13 +350,13 @@ fn index (_source : & Source) -> (SourceIndex, SourceStatistics) {
 	
 	let _records = &_source.records;
 	
-	let mut _index_by_hash : HashMap<String, Vec<usize>> = HashMap::with_capacity (_records.len ());
-	let mut _index_by_path : HashMap<PathBuf, Vec<usize>> = HashMap::with_capacity (_records.len ());
+	let mut _index_by_hash : HashMap<&String, Vec<&SourceRecord>> = HashMap::with_capacity (_records.len ());
+	let mut _index_by_path : HashMap<&PathBuf, Vec<&SourceRecord>> = HashMap::with_capacity (_records.len ());
 	
 	let mut _records_count = 0;
 	for (_index, _record) in _records.iter () .enumerate () {
-		_index_by_hash.entry (_record.hash.clone ()) .or_default () .push (_index);
-		_index_by_path.entry (_record.path.clone ()) .or_default () .push (_index);
+		_index_by_hash.entry (&_record.hash) .or_default () .push (_record);
+		_index_by_path.entry (&_record.path) .or_default () .push (_record);
 		_records_count += 1;
 	}
 	
@@ -371,7 +373,7 @@ fn index (_source : & Source) -> (SourceIndex, SourceStatistics) {
 		} else {
 			_duplicate_hashes += 1;
 		}
-		if _hash == hash_for_empty {
+		if *_hash == hash_for_empty {
 			_empty_files += _records.len ();
 		} else if _records.len () == 1 {
 			_unique_files += 1;
@@ -416,16 +418,16 @@ fn index (_source : & Source) -> (SourceIndex, SourceStatistics) {
 
 
 
-fn diff (_source_left : & Source, _index_left : & SourceIndex, _source_right : & Source, _index_right : & SourceIndex) -> (Diff) {
+fn diff <'a> (_source_left : &'a Source, _index_left : &'a SourceIndex, _source_right : &'a Source, _index_right : &'a SourceIndex) -> (Diff<'a>) {
 	
 	let mut _hashes = Vec::with_capacity (cmp::max (_index_left.by_hash.len (), _index_right.by_hash.len ()) * 3 / 2);
 	let mut _paths = Vec::with_capacity (cmp::max (_index_left.by_path.len (), _index_right.by_path.len ()) * 3 / 2);
 	
-	_hashes.extend (_index_left.by_hash.keys () .cloned ());
-	_paths.extend (_index_left.by_path.keys () .cloned ());
+	_hashes.extend (_index_left.by_hash.keys ());
+	_paths.extend (_index_left.by_path.keys ());
 	
-	_hashes.extend (_index_right.by_hash.keys () .cloned ());
-	_paths.extend (_index_right.by_path.keys () .cloned ());
+	_hashes.extend (_index_right.by_hash.keys ());
+	_paths.extend (_index_right.by_path.keys ());
 	
 	_hashes.sort_unstable ();
 	_paths.sort_unstable ();
@@ -444,19 +446,14 @@ fn diff (_source_left : & Source, _index_left : & SourceIndex, _source_right : &
 	let mut _conflicting_hashes = 0;
 	
 	for _hash in _hashes.iter () {
+		let _hash = *_hash;
 		
 		let _records_left = _index_left.by_hash.get (_hash)
-				.map (|_keys|
-						_keys.iter ()
-								.map (|_key| _source_left.records.get (*_key) .unwrap () .path.clone ())
-								.collect::<Vec<PathBuf>> ())
+				.map (|_records| _records.iter () .map (|_record| &_record.path) .collect::<Vec<&PathBuf>> ())
 				.map (|mut _values| { _values.sort_unstable (); _values });
 		
 		let _records_right = _index_right.by_hash.get (_hash)
-				.map (|_keys|
-						_keys.iter ()
-								.map (|_key| _source_right.records.get (*_key) .unwrap () .path.clone ())
-								.collect::<Vec<PathBuf>>  ())
+				.map (|_records| _records.iter () .map (|_record| &_record.path) .collect::<Vec<&PathBuf>> ())
 				.map (|mut _values| { _values.sort_unstable (); _values });
 		
 		let _entry = match (_records_left, _records_right) {
@@ -480,7 +477,7 @@ fn diff (_source_left : & Source, _index_left : & SourceIndex, _source_right : &
 				unreachable! ("[6deb2aea]"),
 		};
 		
-		_diff_by_hash.insert (_hash.clone (), _entry);
+		_diff_by_hash.insert (_hash, _entry);
 		_distinct_hashes += 1;
 	}
 	
@@ -492,18 +489,14 @@ fn diff (_source_left : & Source, _index_left : & SourceIndex, _source_right : &
 	let mut _conflicting_paths = 0;
 	
 	for _path in _paths.iter () {
+		let _path = *_path;
 		
 		let _records_left = _index_left.by_path.get (_path)
-				.map (|_keys|
-						_keys.iter ()
-								.map (|_key| _source_left.records.get (*_key) .unwrap () .hash.clone ())
-								.collect::<Vec<String>> ())
+				.map (|_records| _records.iter () .map (|_record| &_record.hash) .collect::<Vec<&String>> ())
 				.map (|mut _values| { _values.sort_unstable (); _values });
+		
 		let _records_right = _index_right.by_path.get (_path)
-				.map (|_keys|
-						_keys.iter ()
-								.map (|_key| _source_right.records.get (*_key) .unwrap () .hash.clone ())
-								.collect::<Vec<String>> ())
+				.map (|_records| _records.iter () .map (|_record| &_record.hash) .collect::<Vec<&String>> ())
 				.map (|mut _values| { _values.sort_unstable (); _values });
 		
 		let _entry = match (_records_left, _records_right) {
@@ -527,7 +520,7 @@ fn diff (_source_left : & Source, _index_left : & SourceIndex, _source_right : &
 				unreachable! ("[6deb2aea]"),
 		};
 		
-		_diff_by_path.insert (_path.clone (), _entry);
+		_diff_by_path.insert (_path, _entry);
 		_distinct_paths += 1;
 	}
 	
