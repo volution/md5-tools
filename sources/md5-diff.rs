@@ -64,6 +64,7 @@ struct SourceStatistics {
 	unique_files : usize,
 	duplicate_files : usize,
 	empty_files : usize,
+	invalid_files : usize,
 	distinct_paths : usize,
 	unique_paths : usize,
 	duplicate_paths : usize,
@@ -158,6 +159,7 @@ fn report_source_statistics (_tag : char, _source : & Source, _statistics : & So
 	println! ("##      * unique files          : {:8}", _statistics.unique_files);
 	println! ("##      * duplicate files       : {:8}", _statistics.duplicate_files);
 	println! ("##      * empty files           : {:8}", _statistics.empty_files);
+	println! ("##      * invalid files         : {:8}", _statistics.invalid_files);
 	println! ("##    * source: `{}`", _source.path.display ());
 }
 
@@ -199,6 +201,9 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff) -> 
 	
 	if true {
 		for _hash in _diff.hashes.iter () {
+			if (*_hash == hash_for_empty) || (*_hash == hash_for_invalid) {
+				continue;
+			}
 			match _diff.by_hash.get (_hash) .unwrap () {
 				DiffEntry::UniqueLeft (_paths) =>
 					for _path in _paths.iter () {
@@ -216,6 +221,9 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff) -> 
 	
 	if true {
 		for _hash in _diff.hashes.iter () {
+			if (*_hash == hash_for_empty) || (*_hash == hash_for_invalid) {
+				continue;
+			}
 			match _diff.by_hash.get (_hash) .unwrap () {
 				DiffEntry::UniqueRight (_paths) =>
 					for _path in _paths.iter () {
@@ -254,7 +262,7 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff) -> 
 	
 	if true {
 		for _hash in _diff.hashes.iter () {
-			if *_hash == hash_for_empty {
+			if (*_hash == hash_for_empty) || (*_hash == hash_for_invalid) {
 				continue;
 			}
 			match _diff.by_hash.get (_hash) .unwrap () {
@@ -366,6 +374,7 @@ fn index (_source : & Source) -> (SourceIndex, SourceStatistics) {
 	let mut _unique_files = 0;
 	let mut _duplicate_files = 0;
 	let mut _empty_files = 0;
+	let mut _invalid_files = 0;
 	for (_hash, _records) in _index_by_hash.iter () {
 		_distinct_hashes += 1;
 		if _records.len () == 1 {
@@ -375,6 +384,8 @@ fn index (_source : & Source) -> (SourceIndex, SourceStatistics) {
 		}
 		if *_hash == hash_for_empty {
 			_empty_files += _records.len ();
+		} else if *_hash == hash_for_invalid {
+			_invalid_files += _records.len ();
 		} else if _records.len () == 1 {
 			_unique_files += 1;
 		} else {
@@ -407,6 +418,7 @@ fn index (_source : & Source) -> (SourceIndex, SourceStatistics) {
 			unique_files : _unique_files,
 			duplicate_files : _duplicate_files,
 			empty_files : _empty_files,
+			invalid_files : _invalid_files,
 			distinct_paths : _distinct_paths,
 			unique_paths : _unique_paths,
 			duplicate_paths : _duplicate_paths,
@@ -556,4 +568,5 @@ lazy_static! {
 }
 
 static hash_for_empty : & str = "d41d8cd98f00b204e9800998ecf8427e";
+static hash_for_invalid : & str = "00000000000000000000000000000000";
 
