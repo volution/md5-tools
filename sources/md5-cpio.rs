@@ -6,25 +6,24 @@
 use ::std::env;
 use ::std::io;
 
+use ::std::eprintln;
+use ::std::println;
+
+use ::std::iter::ExactSizeIterator as _;
+use ::std::option::{Option::Some, Option::None};
+use ::std::result::{Result, Result::Ok, Result::Err};
+
 use ::cpio::newc as cpio;
 use ::libc;
 use ::md5;
 
-use ::std::eprintln;
-use ::std::panic;
-use ::std::println;
-
-use ::std::iter::ExactSizeIterator as _;
-use ::std::result::{Result, Result::Ok};
-use ::std::option::{Option::Some, Option::None};
 
 
 
-
-fn main () -> Result<(), io::Error> {
+fn main () -> (Result<(), io::Error>) {
 	
 	if env::args () .len () != 1 {
-		panic! ("[f084735b]  unexpected arguments!");
+		return Err (io::Error::new (io::ErrorKind::Other, "[f084735b]  unexpected arguments"));
 	}
 	
 	let mut _input = io::stdin ();
