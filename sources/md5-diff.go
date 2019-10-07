@@ -219,19 +219,19 @@ func printDiffEntry (_diff *diff, _entry *diffEntry, _detailed bool, _alternativ
 			if _detailed {
 				fmt.Fprintf (os.Stdout, "++ %s %s %s    %s\n", _sourceLabel, _entry.hash, _flags, _entry.path)
 			} else {
-				fmt.Fprintf (os.Stdout, "+%s  %s\n", _sourceLabel, _entry.path)
+				fmt.Fprintf (os.Stdout, "+%s  %s  %s\n", _sourceLabel, _entry.hash, _entry.path)
 			}
 		case matching :
 			if _detailed {
 				fmt.Fprintf (os.Stdout, "== %s %s %s    %s\n", _sourceLabel, _entry.hash, _flags, _entry.path)
 			} else {
-				fmt.Fprintf (os.Stdout, "=%s  %s\n", _sourceLabel, _entry.path)
+				fmt.Fprintf (os.Stdout, "=%s  %s  %s\n", _sourceLabel, _entry.hash, _entry.path)
 			}
 		case conflicting :
 			if _detailed {
 				fmt.Fprintf (os.Stdout, "!! %s %s %s    %s\n", _sourceLabel, _entry.hash, _flags, _entry.path)
 			} else {
-				fmt.Fprintf (os.Stdout, "!%s  %s\n", _sourceLabel, _entry.path)
+				fmt.Fprintf (os.Stdout, "!%s  %s  %s\n", _sourceLabel, _entry.hash, _entry.path)
 			}
 		case renamed :
 			if _detailed {
@@ -242,7 +242,7 @@ func printDiffEntry (_diff *diff, _entry *diffEntry, _detailed bool, _alternativ
 					}
 				}
 			} else {
-				fmt.Fprintf (os.Stdout, "~%s  %s\n", _sourceLabel, _entry.path)
+				fmt.Fprintf (os.Stdout, "~%s  %s  %s\n", _sourceLabel, _entry.hash, _entry.path)
 			}
 		default :
 			panic ("assertion")
@@ -319,7 +319,6 @@ func processDiff (_recordsA *records, _recordsB *records) (*diff, error) {
 			}
 			_statistics.samePaths += 1
 		} else if _existsInA {
-			_entryForA.status = unique
 			if _pathsInB, _hashExistsInB := _recordsB.hashIndex[_hashInA]; _hashExistsInB {
 				_entryForA.status = renamed
 				_entryForA.pathsInOther = _pathsInB
