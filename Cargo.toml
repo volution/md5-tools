@@ -1,0 +1,16 @@
+
+[package]
+name = "md5-tools"
+version = "0.0.0"
+authors = ["Ciprian Dorin Craciun <ciprian@volution.ro>"]
+edition = "2018"
+
+[dependencies]
+libc = "0.2.62"
+cpio = "0.2.0"
+md5 = "0.6.1"
+
+[[bin]]
+name = "md5-cpio"
+path = "./sources/md5-cpio.rs"
+
