@@ -43,7 +43,7 @@ fn main () -> (Result<(), io::Error>) {
 		
 		if (_metadata.mode () & libc::S_IFMT) == libc::S_IFREG {
 			
-			let _hash = if _metadata.file_size () > 0 {
+			let _hash = if (_metadata.file_size () > 0) || (_metadata.nlink () <= 1) {
 				
 				let mut _hasher = md5::Context::new ();
 				io::copy (&mut _record, &mut _hasher) ?;
