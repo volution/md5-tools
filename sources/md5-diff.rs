@@ -10,6 +10,7 @@ use ::std::ffi;
 use ::std::fs;
 use ::std::io;
 use ::std::path;
+use ::std::process;
 use ::std::str;
 
 use ::std::collections::HashMap;
@@ -154,7 +155,7 @@ fn main () -> (Result<(), io::Error>) {
 	let (_index_left, _statistics_left) = index (&_source_left, &_tokens);
 	let (_index_right, _statistics_right) = index (&_source_right, &_tokens);
 	
-	if verbose { eprintln! ("[ii] [b89979a2]  analyzing..."); }
+	if verbose { eprintln! ("[ii] [b89979a2]  diffing..."); }
 	let _diff = diff (&_source_left, &_index_left, &_source_right, &_index_right, &_tokens);
 	
 	if verbose { eprintln! ("[ii] [92d696c3]  reporting statistics..."); }
@@ -168,7 +169,8 @@ fn main () -> (Result<(), io::Error>) {
 	#[ cfg (feature = "profile") ]
 	profiler.lock () .unwrap () .stop () .unwrap ();
 	
-	return Ok (());
+	// NOTE:  We explicitly exit, so that destructors are not called...
+	process::exit (0);
 }
 
 
