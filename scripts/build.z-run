@@ -3,11 +3,8 @@
 
 
 
-:: build / debug :: exec -- cargo build "${@}"
-:: build / release :: exec -- cargo build --release "${@}"
-
 << run / md5-diff / debug
-	"${ZRUN[@]}" ':: build / debug' --bin md5-diff --quiet
+	"${ZRUN[@]}" ':: build / rust / debug' --bin md5-diff --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
 		./target/debug/md5-diff "${@}" \
@@ -15,10 +12,27 @@
 !!
 
 << run / md5-diff / release
-	"${ZRUN[@]}" ':: build / release' --bin md5-diff --quiet
+	"${ZRUN[@]}" ':: build / rust / release' --bin md5-diff --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
 		./target/release/md5-diff "${@}" \
+	#
+!!
+
+:: build / rust / debug :: exec -- "${ZRUN[@]}" ':: build / rust' "${@}"
+:: build / rust / release :: exec -- "${ZRUN[@]}" ':: build / rust' --release "${@}"
+
+--<< build / rust
+	_rustflags=(
+			--remap-path-prefix "$( exec -- readlink -e -- . )=/home/build"
+			--remap-path-prefix "$( exec -- readlink -e -- ./sources )=/home/build/sources"
+			--remap-path-prefix "$( exec -- readlink -e -- "${HOME}/.cargo/registry/src" )=/home/build/sources"
+			--remap-path-prefix "${HOME}/.cargo/registry/src=/home/build/sources"
+		)
+	export -- RUSTFLAGS="${_rustflags[*]}"
+	exec -- cargo build \
+		--offline \
+		"${@}" \
 	#
 !!
 
