@@ -1,0 +1,50 @@
+#!/dev/null
+
+
+
+
+:: build / debug :: exec -- cargo build "${@}"
+:: build / release :: exec -- cargo build --release "${@}"
+
+<< run / md5-diff / debug
+	"${ZRUN[@]}" ':: build / debug' --bin md5-diff --quiet
+	exec -- \
+		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
+		./target/debug/md5-diff "${@}" \
+	#
+!!
+
+<< run / md5-diff / release
+	"${ZRUN[@]}" ':: build / release' --bin md5-diff --quiet
+	exec -- \
+		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
+		./target/release/md5-diff "${@}" \
+	#
+!!
+
+
+
+
+<< run / md5-diff-go
+	"${ZRUN[@]}" ':: build / go' md5-diff
+	exec -- \
+		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
+		./target/go/md5-diff "${@}" \
+	#
+!!
+
+--<< build / go
+	test "${#}" -eq 1 ; _tool="${1}" ; shift -- 1
+	mkdir -p -- ./target/go
+	test -e "./sources/${_tool}.go"
+	exec -- go build \
+			-ldflags 'all=-s -extld=gcc -extldflags=-static' \
+			-gcflags 'all=-l=4' \
+			-trimpath \
+			-o "./target/go/${_tool}" \
+			"${@}" \
+			-- \
+			"./sources/${_tool}.go" \
+	#
+!!
+

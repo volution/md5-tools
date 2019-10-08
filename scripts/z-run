@@ -1,0 +1,6 @@
+#!/dev/null
+
+
+&& ./build.z-run
+&& ./tests.z-run
+

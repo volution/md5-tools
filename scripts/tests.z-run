@@ -1,0 +1,33 @@
+#!/dev/null
+
+
+--<< test / md5-diff
+	test "${#}" -eq 2 ; _script="${1}" ; _dataset="${2}" ; shift -- 2
+	_source_a="./.tests/datasets/${_dataset}--a"
+	_source_b="./.tests/datasets/${_dataset}--b"
+	test -f "${_source_a}"
+	test -f "${_source_b}"
+	exec -- "${ZRUN[@]}" "${_script}" "${_source_a}" "${_source_b}" "${@}"
+!!
+
+
+<<== test / md5-diff / generate
+	printf -- '&&__ %s\n' '../.tests/datasets/'
+	find ./.tests/datasets/ -xdev -xtype f -printf '%P\n' \
+	| sed \
+			-r \
+			-e 's#^(.+)--[a-z]$#\1#' \
+			-e '/^[a-z0-9_-]+$/ !d' \
+	| sort -u \
+	| while read -r -- _dataset ; do
+		for _suffix in \
+				' / debug' \
+				' / release' \
+				'-go' \
+		; do
+			printf -- ':: test / md5-diff%s / %s :: exec -- "${ZRUN[@]}" %q %q %q "${@}"\n' "${_suffix}" "${_dataset}" ":: test / md5-diff" ":: run / md5-diff${_suffix}" "${_dataset}"
+		done
+	done
+	#
+!!
+
