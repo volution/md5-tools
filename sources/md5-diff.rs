@@ -1,7 +1,7 @@
 
 
-#![no_implicit_prelude]
-#![allow (unused_imports, dead_code, non_upper_case_globals)]
+#![ no_implicit_prelude ]
+#![ allow (unused_imports, dead_code, non_upper_case_globals) ]
 
 
 use ::std::cmp;
@@ -36,6 +36,9 @@ use ::std::os::unix::ffi::OsStrExt as _;
 
 use ::regex;
 use ::lazy_static::lazy_static;
+
+#[ cfg (profile) ]
+use ::cpuprofiler::PROFILER as profiler;
 
 
 
@@ -100,6 +103,9 @@ struct DiffStatistics {
 
 fn main () -> (Result<(), io::Error>) {
 	
+	#[ cfg (profile) ]
+	profiler.lock () .unwrap () .start ("./target/md5-diff.profile") .unwrap ();
+	
 	let (_path_left, _path_right) = {
 		
 		let _arguments = env::args_os ();
@@ -133,6 +139,9 @@ fn main () -> (Result<(), io::Error>) {
 	
 	if verbose { eprintln! ("[ii] [eedb34f8]  reporting details..."); }
 	report_diff_entries ('A', 'B', &_diff);
+	
+	#[ cfg (profile) ]
+	profiler.lock () .unwrap () .stop () .unwrap ();
 	
 	return Ok (());
 }
