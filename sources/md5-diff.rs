@@ -336,10 +336,12 @@ fn load (_path : & Path) -> (Result<Source, io::Error>) {
 				continue;
 			}
 			
-			if let Some (_captures) = _record_line_pattern.captures (&_buffer) {
+			if _record_line_pattern.is_match (&_buffer) {
 				
-				let _hash = _captures.get (1) .unwrap () .as_bytes ();
-				let _path = _captures.get (3) .unwrap () .as_bytes ();
+				let _split = _buffer.iter () .position (|&_byte| _byte == b' ') .unwrap ();
+				
+				let _hash = &_buffer[.. _split];
+				let _path = &_buffer[_split + 1 ..];
 				
 				let _hash = Hash::from (str::from_utf8 (_hash) .unwrap ());
 				let _path = Path0::from (ffi::OsStr::from_bytes (_path));
@@ -589,5 +591,5 @@ lazy_static! {
 static hash_for_empty : & str = "d41d8cd98f00b204e9800998ecf8427e";
 static hash_for_invalid : & str = "00000000000000000000000000000000";
 
-static verbose : bool = false;
+static verbose : bool = true;
 
