@@ -221,7 +221,49 @@ fn report_diff_statistics (_tag_left : char, _tag_right : char, _diff : & Diff) 
 
 fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff, _tokens : & Tokens) -> () {
 	
-	let mut _pairs : Vec<(char, char, PathKey, HashKey)> = Vec::new ();
+	let mut _unique_hashes_left : Vec<(char, char, PathKey, HashKey)> = Vec::new ();
+	let mut _unique_hashes_right : Vec<(char, char, PathKey, HashKey)> = Vec::new ();
+	let mut _conflicting_paths : Vec<(char, char, PathKey, HashKey)> = Vec::new ();
+	let mut _renamed_hashes : Vec<(char, char, PathKey, HashKey)> = Vec::new ();
+	
+	for &_hash in _diff.hashes.iter () {
+		if (_hash == _tokens.hash_key_empty) || (_hash == _tokens.hash_key_invalid) {
+			continue;
+		}
+		match _diff.by_hash.get (&_hash) .unwrap () {
+			DiffEntry::UniqueLeft (_paths) =>
+				for &_path in _paths.iter () {
+					_unique_hashes_left.push (('+', _tag_left, _path, _hash))
+				},
+			DiffEntry::UniqueRight (_paths) =>
+				for &_path in _paths.iter () {
+					_unique_hashes_right.push (('+', _tag_right, _path, _hash))
+				},
+			DiffEntry::Conflicting (_paths_left, _paths_right) => {
+				for &_path in _paths_left.iter () {
+					_renamed_hashes.push (('~', _tag_left, _path, _hash))
+				}
+				for &_path in _paths_right.iter () {
+					_renamed_hashes.push (('~', _tag_right, _path, _hash))
+				}
+			},
+			_ => (),
+		}
+	}
+	
+	for &_path in _diff.paths.iter () {
+		match _diff.by_path.get (&_path) .unwrap () {
+			DiffEntry::Conflicting (_hashes_left, _hashes_right) => {
+				for &_hash in _hashes_left.iter () {
+					_conflicting_paths.push (('!', _tag_left, _path, _hash))
+				}
+				for &_hash in _hashes_right.iter () {
+					_conflicting_paths.push (('!', _tag_right, _path, _hash))
+				}
+			},
+			_ => (),
+		}
+	}
 	
 	fn print_pairs (_pairs : &mut Vec<(char, char, PathKey, HashKey)>, _tokens : & Tokens, _sort_by_path : bool) -> () {
 		println! ();
@@ -233,93 +275,31 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff, _to
 		for &(_slug, _tag, _path, _hash) in _pairs.iter () {
 			println! ("{}{}  {}  {}", _slug, _tag, _tokens.select_hash (_hash), _tokens.select_path (_path).to_string_lossy ());
 		}
-		_pairs.clear ();
 		println! ();
 	}
 	
-	if true {
-		for &_hash in _diff.hashes.iter () {
-			if (_hash == _tokens.hash_key_empty) || (_hash == _tokens.hash_key_invalid) {
-				continue;
-			}
-			match _diff.by_hash.get (&_hash) .unwrap () {
-				DiffEntry::UniqueLeft (_paths) =>
-					for &_path in _paths.iter () {
-						_pairs.push (('+', _tag_left, _path, _hash))
-					},
-				_ => (),
-			}
-		}
-		if ! _pairs.is_empty () {
-			println! ();
-			println! ("####  Hashes unique in ({}) :: {}", _tag_left, _diff.by_hash_statistics.unique_left);
-			print_pairs (&mut _pairs, _tokens, true);
-		}
+	if ! _unique_hashes_left.is_empty () {
+		println! ();
+		println! ("####  Hashes unique in ({}) :: {}", _tag_left, _diff.by_hash_statistics.unique_left);
+		print_pairs (&mut _unique_hashes_left, _tokens, true);
 	}
 	
-	if true {
-		for &_hash in _diff.hashes.iter () {
-			if (_hash == _tokens.hash_key_empty) || (_hash == _tokens.hash_key_invalid) {
-				continue;
-			}
-			match _diff.by_hash.get (&_hash) .unwrap () {
-				DiffEntry::UniqueRight (_paths) =>
-					for &_path in _paths.iter () {
-						_pairs.push (('+', _tag_right, _path, _hash))
-					},
-				_ => (),
-			}
-		}
-		if ! _pairs.is_empty () {
-			println! ();
-			println! ("####  Hashes unique in ({}) :: {}", _tag_right, _diff.by_hash_statistics.unique_right);
-			print_pairs (&mut _pairs, _tokens, true);
-		}
+	if ! _unique_hashes_right.is_empty () {
+		println! ();
+		println! ("####  Hashes unique in ({}) :: {}", _tag_right, _diff.by_hash_statistics.unique_right);
+		print_pairs (&mut _unique_hashes_right, _tokens, true);
 	}
 	
-	if true {
-		for &_path in _diff.paths.iter () {
-			match _diff.by_path.get (&_path) .unwrap () {
-				DiffEntry::Conflicting (_hashes_left, _hashes_right) => {
-					for &_hash in _hashes_left.iter () {
-						_pairs.push (('!', _tag_left, _path, _hash))
-					}
-					for &_hash in _hashes_right.iter () {
-						_pairs.push (('!', _tag_right, _path, _hash))
-					}
-				},
-				_ => (),
-			}
-		}
-		if ! _pairs.is_empty () {
-			println! ();
-			println! ("####  Paths conflicting in ({}) and ({}) :: {}", _tag_left, _tag_right, _diff.by_path_statistics.conflicting);
-			print_pairs (&mut _pairs, _tokens, true);
-		}
+	if ! _conflicting_paths.is_empty () {
+		println! ();
+		println! ("####  Paths conflicting in ({}) and ({}) :: {}", _tag_left, _tag_right, _diff.by_path_statistics.conflicting);
+		print_pairs (&mut _conflicting_paths, _tokens, true);
 	}
 	
-	if true {
-		for &_hash in _diff.hashes.iter () {
-			if (_hash == _tokens.hash_key_empty) || (_hash == _tokens.hash_key_invalid) {
-				continue;
-			}
-			match _diff.by_hash.get (&_hash) .unwrap () {
-				DiffEntry::Conflicting (_paths_left, _paths_right) => {
-					for &_path in _paths_left.iter () {
-						_pairs.push (('~', _tag_left, _path, _hash))
-					}
-					for &_path in _paths_right.iter () {
-						_pairs.push (('~', _tag_right, _path, _hash))
-					}
-				},
-				_ => (),
-			}
-		}
-		if ! _pairs.is_empty () {
-			println! ();
-			println! ("####  Files re-organized in ({}) and ({}) :: {} (hashes)", _tag_left, _tag_right, _diff.by_hash_statistics.conflicting);
-			print_pairs (&mut _pairs, _tokens, false);
-		}
+	if ! _renamed_hashes.is_empty () {
+		println! ();
+		println! ("####  Files re-organized in ({}) and ({}) :: {} (hashes)", _tag_left, _tag_right, _diff.by_hash_statistics.conflicting);
+		print_pairs (&mut _renamed_hashes, _tokens, false);
 	}
 }
 
