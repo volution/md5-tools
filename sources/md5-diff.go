@@ -98,8 +98,8 @@ func main () () {
 	}
 	
 	if true {
-		printRecordStatistics (_recordsA)
-		printRecordStatistics (_recordsB)
+		printRecordStatistics ('A', _recordsA)
+		printRecordStatistics ('B', _recordsB)
 		printDiffStatistics (_diff)
 	}
 	if true {
@@ -108,105 +108,112 @@ func main () () {
 }
 
 
-func printRecordStatistics (_records *records) () {
-	fmt.Fprintf (os.Stdout, "## Record set `%s` statistics ##\n", _records.name)
-	fmt.Fprintf (os.Stdout, "##   * unique hashes    : %7d\n", _records.statistics.uniqueHashes)
-	fmt.Fprintf (os.Stdout, "##   * duplicate hashes : %7d\n", _records.statistics.duplicateHashes)
-	fmt.Fprintf (os.Stdout, "##   * paths            : %7d\n", _records.statistics.paths)
-	fmt.Fprintf (os.Stdout, "##\n")
+func printRecordStatistics (_tag rune, _records *records) () {
+	fmt.Fprintf (os.Stdout, "\n")
+	fmt.Fprintf (os.Stdout, "##  Dataset (%c) statistics\n", _tag)
+	fmt.Fprintf (os.Stdout, "##    * paths                : %8d\n", _records.statistics.paths)
+	fmt.Fprintf (os.Stdout, "##    * distinct hashes      : %8d\n", _records.statistics.uniqueHashes)
+	fmt.Fprintf (os.Stdout, "##    * unique hashes        : %8d\n", _records.statistics.uniqueHashes - _records.statistics.duplicateHashes)
+	fmt.Fprintf (os.Stdout, "##    * duplicate hashes     : %8d\n", _records.statistics.duplicateHashes)
+	fmt.Fprintf (os.Stdout, "##    * source: `%s`\n", _records.name)
 }
 
 
 func printDiffStatistics (_diff *diff) () {
-	fmt.Fprintf (os.Stdout, "## Record diff report\n")
-	fmt.Fprintf (os.Stdout, "##   * (A) -> `%s`\n", _diff.recordsA.name)
-	fmt.Fprintf (os.Stdout, "##   * (B) -> `%s`\n", _diff.recordsB.name)
-	fmt.Fprintf (os.Stdout, "## (hashes)\n")
-	fmt.Fprintf (os.Stdout, "##   * unique hashes in (A) : %7d\n", _diff.statistics.uniqueHashesInA)
-	fmt.Fprintf (os.Stdout, "##   * unique hashes in (B) : %7d\n", _diff.statistics.uniqueHashesInB)
-	fmt.Fprintf (os.Stdout, "##   * same hashes in both  : %7d\n", _diff.statistics.sameHashes)
-	fmt.Fprintf (os.Stdout, "## (paths based on hashes)\n")
-	fmt.Fprintf (os.Stdout, "##   * unique paths in (A)  : %7d\n", _diff.statistics.uniquePathsInA)
-	fmt.Fprintf (os.Stdout, "##   * unique paths in (B)  : %7d\n", _diff.statistics.uniquePathsInB)
-	fmt.Fprintf (os.Stdout, "##   * renamed paths in (A) : %7d\n", _diff.statistics.renamedPathsInA)
-	fmt.Fprintf (os.Stdout, "##   * renamed paths in (B) : %7d\n", _diff.statistics.renamedPathsInB)
-	fmt.Fprintf (os.Stdout, "##   * same paths in both   : %7d\n", _diff.statistics.samePaths)
-	fmt.Fprintf (os.Stdout, "##     * matching paths     : %7d\n", _diff.statistics.matchingPaths)
-	fmt.Fprintf (os.Stdout, "##     * conflicting paths  : %7d\n", _diff.statistics.conflictingPaths)
-	fmt.Fprintf (os.Stdout, "##\n")
+	fmt.Fprintf (os.Stdout, "\n")
+	fmt.Fprintf (os.Stdout, "##  Diff statistics (A) vs (B)\n")
+//	fmt.Fprintf (os.Stdout, "##    * (A) -> `%s`\n", _diff.recordsA.name)
+//	fmt.Fprintf (os.Stdout, "##    * (B) -> `%s`\n", _diff.recordsB.name)
+	fmt.Fprintf (os.Stdout, "##  (hashes)\n")
+	fmt.Fprintf (os.Stdout, "##    * unique hashes in (A) : %8d\n", _diff.statistics.uniqueHashesInA)
+	fmt.Fprintf (os.Stdout, "##    * unique hashes in (B) : %8d\n", _diff.statistics.uniqueHashesInB)
+	fmt.Fprintf (os.Stdout, "##    * same hashes in both  : %8d\n", _diff.statistics.sameHashes)
+	fmt.Fprintf (os.Stdout, "##  (paths based on hashes)\n")
+	fmt.Fprintf (os.Stdout, "##    * unique paths in (A)  : %8d\n", _diff.statistics.uniquePathsInA)
+	fmt.Fprintf (os.Stdout, "##    * unique paths in (B)  : %8d\n", _diff.statistics.uniquePathsInB)
+	fmt.Fprintf (os.Stdout, "##    * renamed paths in (A) : %8d\n", _diff.statistics.renamedPathsInA)
+	fmt.Fprintf (os.Stdout, "##    * renamed paths in (B) : %8d\n", _diff.statistics.renamedPathsInB)
+	fmt.Fprintf (os.Stdout, "##    * same paths in both   : %8d\n", _diff.statistics.samePaths)
+	fmt.Fprintf (os.Stdout, "##      * matching paths     : %8d\n", _diff.statistics.matchingPaths)
+	fmt.Fprintf (os.Stdout, "##      * conflicting paths  : %8d\n", _diff.statistics.conflictingPaths)
 }
 
 
 func printDiffEntries (_diff *diff) () {
 	
 	if true {
-		fmt.Fprintf (os.Stdout, "## All diff entries conflicting\n")
-		fmt.Fprintf (os.Stdout, "##   * (A) -> `%s`\n", _diff.recordsA.name)
-		fmt.Fprintf (os.Stdout, "##   * (B) -> `%s`\n", _diff.recordsB.name)
-		fmt.Fprintf (os.Stdout, "##   * conflicting paths    : %7d\n", _diff.statistics.conflictingPaths)
-		fmt.Fprintf (os.Stdout, "##\n")
-		for _, _entry := range _diff.entries {
-			if _entry.status != conflicting {
-				continue
-			}
-			printDiffEntry (_diff, &_entry, false, false, false)
-		}
-		fmt.Fprintf (os.Stdout, "##\n")
-	}
-	
-	if true {
-		fmt.Fprintf (os.Stdout, "## All diff entries unique for (A)\n")
-		fmt.Fprintf (os.Stdout, "##   * (A) -> `%s`\n", _diff.recordsA.name)
-		fmt.Fprintf (os.Stdout, "##   * unique hashes in (A) : %7d\n", _diff.statistics.uniqueHashesInA)
-		fmt.Fprintf (os.Stdout, "##\n")
+		fmt.Fprintf (os.Stdout, "\n")
+		fmt.Fprintf (os.Stdout, "####  All diff entries unique for (A)\n")
+		fmt.Fprintf (os.Stdout, "##    * (A) -> `%s`\n", _diff.recordsA.name)
+		fmt.Fprintf (os.Stdout, "##    * unique hashes in (A) : %8d\n", _diff.statistics.uniqueHashesInA)
+		fmt.Fprintf (os.Stdout, "\n")
 		for _, _entry := range _diff.entries {
 			if (_entry.status != unique) || (_entry.source != _diff.recordsA) {
 				continue
 			}
 			printDiffEntry (_diff, &_entry, false, false, false)
 		}
-		fmt.Fprintf (os.Stdout, "##\n")
+		fmt.Fprintf (os.Stdout, "\n")
 	}
 	
 	if true {
-		fmt.Fprintf (os.Stdout, "## All diff entries unique for (B)\n")
-		fmt.Fprintf (os.Stdout, "##   * (B) -> `%s`\n", _diff.recordsB.name)
-		fmt.Fprintf (os.Stdout, "##   * unique hashes in (B) : %7d\n", _diff.statistics.uniqueHashesInB)
-		fmt.Fprintf (os.Stdout, "##\n")
+		fmt.Fprintf (os.Stdout, "\n")
+		fmt.Fprintf (os.Stdout, "####  All diff entries unique for (B)\n")
+		fmt.Fprintf (os.Stdout, "##    * (B) -> `%s`\n", _diff.recordsB.name)
+		fmt.Fprintf (os.Stdout, "##    * unique hashes in (B) : %8d\n", _diff.statistics.uniqueHashesInB)
+		fmt.Fprintf (os.Stdout, "\n")
 		for _, _entry := range _diff.entries {
 			if (_entry.status != unique) || (_entry.source != _diff.recordsB) {
 				continue
 			}
 			printDiffEntry (_diff, &_entry, false, false, false)
 		}
-		fmt.Fprintf (os.Stdout, "##\n")
+		fmt.Fprintf (os.Stdout, "\n")
 	}
 	
 	if true {
-		fmt.Fprintf (os.Stdout, "## All diff entries renamed\n")
-		fmt.Fprintf (os.Stdout, "##   * (A) -> `%s`\n", _diff.recordsA.name)
-		fmt.Fprintf (os.Stdout, "##   * (B) -> `%s`\n", _diff.recordsB.name)
-		fmt.Fprintf (os.Stdout, "##   * renamed paths in (A) : %7d\n", _diff.statistics.renamedPathsInA)
-		fmt.Fprintf (os.Stdout, "##   * renamed paths in (B) : %7d\n", _diff.statistics.renamedPathsInB)
-		fmt.Fprintf (os.Stdout, "##\n")
+		fmt.Fprintf (os.Stdout, "\n")
+		fmt.Fprintf (os.Stdout, "####  All diff entries conflicting\n")
+		fmt.Fprintf (os.Stdout, "##    * (A) -> `%s`\n", _diff.recordsA.name)
+		fmt.Fprintf (os.Stdout, "##    * (B) -> `%s`\n", _diff.recordsB.name)
+		fmt.Fprintf (os.Stdout, "##    * conflicting paths    : %8d\n", _diff.statistics.conflictingPaths)
+		fmt.Fprintf (os.Stdout, "\n")
+		for _, _entry := range _diff.entries {
+			if _entry.status != conflicting {
+				continue
+			}
+			printDiffEntry (_diff, &_entry, false, false, false)
+		}
+		fmt.Fprintf (os.Stdout, "\n")
+	}
+	
+	if true {
+		fmt.Fprintf (os.Stdout, "\n")
+		fmt.Fprintf (os.Stdout, "####  All diff entries renamed\n")
+		fmt.Fprintf (os.Stdout, "##    * (A) -> `%s`\n", _diff.recordsA.name)
+		fmt.Fprintf (os.Stdout, "##    * (B) -> `%s`\n", _diff.recordsB.name)
+		fmt.Fprintf (os.Stdout, "##    * renamed paths in (A) : %8d\n", _diff.statistics.renamedPathsInA)
+		fmt.Fprintf (os.Stdout, "##    * renamed paths in (B) : %8d\n", _diff.statistics.renamedPathsInB)
+		fmt.Fprintf (os.Stdout, "\n")
 		for _, _entry := range _diff.entries {
 			if _entry.status != renamed {
 				continue
 			}
 			printDiffEntry (_diff, &_entry, false, false, false)
 		}
-		fmt.Fprintf (os.Stdout, "##\n")
+		fmt.Fprintf (os.Stdout, "\n")
 	}
 	
 	if false {
-		fmt.Fprintf (os.Stdout, "## All diff entries\n")
-		fmt.Fprintf (os.Stdout, "##   * (A) -> `%s`\n", _diff.recordsA.name)
-		fmt.Fprintf (os.Stdout, "##   * (B) -> `%s`\n", _diff.recordsB.name)
-		fmt.Fprintf (os.Stdout, "##\n")
+		fmt.Fprintf (os.Stdout, "\n")
+		fmt.Fprintf (os.Stdout, "####  All diff entries\n")
+		fmt.Fprintf (os.Stdout, "##    * (A) -> `%s`\n", _diff.recordsA.name)
+		fmt.Fprintf (os.Stdout, "##    * (B) -> `%s`\n", _diff.recordsB.name)
+		fmt.Fprintf (os.Stdout, "\n")
 		for _, _entry := range _diff.entries {
 			printDiffEntry (_diff, &_entry, true, true, true)
 		}
-		fmt.Fprintf (os.Stdout, "##\n")
+		fmt.Fprintf (os.Stdout, "\n")
 	}
 }
 

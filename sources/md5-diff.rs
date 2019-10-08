@@ -115,23 +115,23 @@ fn main () -> (Result<(), io::Error>) {
 		(_path_left, _path_right)
 	};
 	
-	eprintln! ("[ii] [42c3ae70]  loading...");
+	if verbose { eprintln! ("[ii] [42c3ae70]  loading..."); }
 	let _source_left = load (_path_left.as_ref ()) ?;
 	let _source_right = load (_path_right.as_ref ()) ?;
 	
-	eprintln! ("[ii] [42c3ae70]  indexing...");
+	if verbose { eprintln! ("[ii] [42c3ae70]  indexing..."); }
 	let (_index_left, _statistics_left) = index (&_source_left);
 	let (_index_right, _statistics_right) = index (&_source_right);
 	
-	eprintln! ("[ii] [b89979a2]  analyzing...");
+	if verbose { eprintln! ("[ii] [b89979a2]  analyzing..."); }
 	let _diff = diff (&_source_left, &_index_left, &_source_right, &_index_right);
 	
-	eprintln! ("[ii] [92d696c3]  reporting statistics...");
+	if verbose { eprintln! ("[ii] [92d696c3]  reporting statistics..."); }
 	report_source_statistics ('A', &_source_left, &_statistics_left);
 	report_source_statistics ('B', &_source_right, &_statistics_right);
 	report_diff_statistics ('A', 'B', &_diff);
 	
-	eprintln! ("[ii] [eedb34f8]  reporting details...");
+	if verbose { eprintln! ("[ii] [eedb34f8]  reporting details..."); }
 	report_diff_entries ('A', 'B', &_diff);
 	
 	return Ok (());
@@ -143,7 +143,7 @@ fn main () -> (Result<(), io::Error>) {
 fn report_source_statistics (_tag : char, _source : & Source, _statistics : & SourceStatistics) -> () {
 	
 	println! ();
-	println! ("##  Dataset ({}) statistics:", _tag);
+	println! ("##  Dataset ({}) statistics", _tag);
 	println! ("##    * records                 : {:8}", _statistics.records);
 	if _statistics.duplicate_paths != 0 {
 	println! ("##    * paths !!!!!!!!");
@@ -167,7 +167,7 @@ fn report_source_statistics (_tag : char, _source : & Source, _statistics : & So
 fn report_diff_statistics (_tag_left : char, _tag_right : char, _diff : & Diff) -> () {
 	
 	println! ();
-	println! ("##  Diff statistics ({}) vs ({}):", _tag_left, _tag_right);
+	println! ("##  Diff statistics ({}) vs ({})", _tag_left, _tag_right);
 	println! ("##    * hashes");
 	println! ("##      * distinct hashes       : {:8}", _diff.by_hash_statistics.distinct);
 	println! ("##      * unique hashes in ({})  : {:8}", _tag_left, _diff.by_hash_statistics.unique_left);
@@ -189,9 +189,13 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff) -> 
 	
 	let mut _pairs : Vec<(char, char, &PathBuf, &String)> = Vec::new ();
 	
-	fn print_pairs (_pairs : &mut Vec<(char, char, &PathBuf, &String)>) -> () {
+	fn print_pairs (_pairs : &mut Vec<(char, char, &PathBuf, &String)>, _sort_by_path : bool) -> () {
 		println! ();
-		_pairs.sort_unstable_by_key (|a| (a.2, a.1, a.0));
+		if _sort_by_path {
+			_pairs.sort_unstable_by_key (|a| (a.2, a.1, a.3, a.0));
+		} else {
+			_pairs.sort_unstable_by_key (|a| (a.3, a.2, a.1, a.0));
+		}
 		for (_slug, _tag, _path, _hash) in _pairs.iter () {
 			println! ("{}{}  {}  {}", _slug, _tag, _hash, _path.display ());
 		}
@@ -215,7 +219,7 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff) -> 
 		if ! _pairs.is_empty () {
 			println! ();
 			println! ("####  Hashes unique in ({}) :: {}", _tag_left, _diff.by_hash_statistics.unique_left);
-			print_pairs (&mut _pairs);
+			print_pairs (&mut _pairs, true);
 		}
 	}
 	
@@ -235,7 +239,7 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff) -> 
 		if ! _pairs.is_empty () {
 			println! ();
 			println! ("####  Hashes unique in ({}) :: {}", _tag_right, _diff.by_hash_statistics.unique_right);
-			print_pairs (&mut _pairs);
+			print_pairs (&mut _pairs, true);
 		}
 	}
 	
@@ -256,7 +260,7 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff) -> 
 		if ! _pairs.is_empty () {
 			println! ();
 			println! ("####  Paths conflicting in ({}) and ({}) :: {}", _tag_left, _tag_right, _diff.by_path_statistics.conflicting);
-			print_pairs (&mut _pairs);
+			print_pairs (&mut _pairs, true);
 		}
 	}
 	
@@ -280,7 +284,7 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff) -> 
 		if ! _pairs.is_empty () {
 			println! ();
 			println! ("####  Files re-organized in ({}) and ({}) :: {} (hashes)", _tag_left, _tag_right, _diff.by_hash_statistics.conflicting);
-			print_pairs (&mut _pairs);
+			print_pairs (&mut _pairs, false);
 		}
 	}
 }
@@ -289,8 +293,6 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff) -> 
 
 
 fn load (_path : & Path) -> (Result<Source, io::Error>) {
-	
-	eprintln! ("[ii] [318323ed]  loading `{}`...", _path.display ());
 	
 	let _file = fs::File::open (_path) ?;
 	let mut _stream = io::BufReader::with_capacity (16 * 1024 * 1024, _file);
@@ -335,7 +337,7 @@ fn load (_path : & Path) -> (Result<Source, io::Error>) {
 				
 			} else {
 				
-				eprintln! ("[ee] [d8bd4da9] @{} {:?}", _line, ffi::OsStr::from_bytes (&_buffer));
+				if verbose { eprintln! ("[ee] [d8bd4da9] @{} {:?}", _line, ffi::OsStr::from_bytes (&_buffer)); }
 				return Err (io::Error::new (io::ErrorKind::Other, "[1bd51464]  invalid record line syntax"));
 			}
 		}
@@ -569,4 +571,6 @@ lazy_static! {
 
 static hash_for_empty : & str = "d41d8cd98f00b204e9800998ecf8427e";
 static hash_for_invalid : & str = "00000000000000000000000000000000";
+
+static verbose : bool = false;
 
