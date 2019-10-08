@@ -37,7 +37,7 @@ use ::std::os::unix::ffi::OsStrExt as _;
 use ::regex;
 use ::lazy_static::lazy_static;
 
-#[ cfg (profile) ]
+#[ cfg (feature = "profile") ]
 use ::cpuprofiler::PROFILER as profiler;
 
 
@@ -103,7 +103,7 @@ struct DiffStatistics {
 
 fn main () -> (Result<(), io::Error>) {
 	
-	#[ cfg (profile) ]
+	#[ cfg (feature = "profile") ]
 	profiler.lock () .unwrap () .start ("./target/md5-diff.profile") .unwrap ();
 	
 	let (_path_left, _path_right) = {
@@ -140,7 +140,7 @@ fn main () -> (Result<(), io::Error>) {
 	if verbose { eprintln! ("[ii] [eedb34f8]  reporting details..."); }
 	report_diff_entries ('A', 'B', &_diff);
 	
-	#[ cfg (profile) ]
+	#[ cfg (feature = "profile") ]
 	profiler.lock () .unwrap () .stop () .unwrap ();
 	
 	return Ok (());

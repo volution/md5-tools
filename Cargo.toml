@@ -5,13 +5,19 @@ version = "0.0.0"
 authors = ["Ciprian Dorin Craciun <ciprian@volution.ro>"]
 edition = "2018"
 
+[features]
+default = [
+	#	"profile",
+	]
+profile = ["cpuprofiler"]
+
 [dependencies]
 libc = "0.2.62"
 cpio = "0.2.0"
 md5 = "0.6.1"
 regex = "1.3.1"
 lazy_static = "1.4.0"
-cpuprofiler = "0.0.3"
+cpuprofiler = { version = "0.0.3", optional = true }
 
 [[bin]]
 name = "md5-cpio"
