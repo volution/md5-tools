@@ -132,6 +132,20 @@ struct HashAlgorithm {
 }
 
 
+#[ derive (Copy, Clone, PartialEq) ]
+enum Decompressor {
+	None,
+	Gzip,  // https://www.gzip.org/
+	Bzip2, // http://sourceware.org/bzip2/
+	Lzip,  // https://www.nongnu.org/lzip/
+	Xz,    // https://tukaani.org/xz/
+	Lzma,  // https://www.7-zip.org/sdk.html
+	Lz4,   // https://lz4.github.io/lz4/
+	Lzo,   // http://www.lzop.org/
+	Zstd,  // https://github.com/facebook/zstd
+}
+
+
 
 
 fn main () -> (Result<(), io::Error>) {
@@ -139,10 +153,11 @@ fn main () -> (Result<(), io::Error>) {
 	#[ cfg (feature = "profile") ]
 	profiler.lock () .unwrap () .start ("./target/md5-diff.profile") .unwrap ();
 	
-	let (_path_left, _path_right, _hash, _record_zero) = {
+	let (_path_left, _path_right, _hash, _record_zero, _decompressor) = {
 		
 		let mut _hash = &MD5;
 		let mut _zero = false;
+		let mut _decompressor = Decompressor::None;
 		
 		let _arguments = env::args_os ();
 		let mut _arguments = _arguments.into_iter () .peekable ();
@@ -152,12 +167,12 @@ fn main () -> (Result<(), io::Error>) {
 			match _arguments.peek () {
 				Some (_argument) =>
 					match _argument.as_bytes () {
-						b"--zero" =>
-							_zero = true,
+						
 						b"--" => {
 							_arguments.next () .unwrap ();
 							break;
 						},
+						
 						b"--md5" =>
 							_hash = &MD5,
 						b"--sha1" =>
@@ -178,6 +193,27 @@ fn main () -> (Result<(), io::Error>) {
 							_hash = &SHA3_384,
 						b"--sha3-512" =>
 							_hash = &SHA3_512,
+						
+						b"--zero" =>
+							_zero = true,
+						
+						b"--gzip" =>
+							_decompressor = Decompressor::Gzip,
+						b"--bzip2" =>
+							_decompressor = Decompressor::Bzip2,
+						b"--lzip" =>
+							_decompressor = Decompressor::Lzip,
+						b"--xz" =>
+							_decompressor = Decompressor::Xz,
+						b"--lzma" =>
+							_decompressor = Decompressor::Lzma,
+						b"--lz4" =>
+							_decompressor = Decompressor::Lz4,
+						b"--lzo" =>
+							_decompressor = Decompressor::Lzo,
+						b"--zstd" =>
+							_decompressor = Decompressor::Zstd,
+						
 						b"" =>
 							return Err (io::Error::new (io::ErrorKind::Other, "[874af75c]  unexpected empty argument")),
 						_argument if _argument[0] == b'-' =>
@@ -197,14 +233,14 @@ fn main () -> (Result<(), io::Error>) {
 		let _path_left = _arguments.next () .unwrap ();
 		let _path_right = _arguments.next () .unwrap ();
 		
-		(_path_left, _path_right, _hash, _zero)
+		(_path_left, _path_right, _hash, _zero, _decompressor)
 	};
 	
 	if verbose { eprintln! ("[ii] [42c3ae70]  loading..."); }
 	let mut _tokens = Tokens::new (_hash.empty, _hash.invalid);
 	let _record_pattern = regex::bytes::Regex::new (_hash.pattern) .unwrap ();
-	let _source_left = load (_path_left.as_ref (), &mut _tokens, &_record_pattern, _record_zero) ?;
-	let _source_right = load (_path_right.as_ref (), &mut _tokens, &_record_pattern, _record_zero) ?;
+	let _source_left = load (_path_left.as_ref (), &mut _tokens, &_record_pattern, _record_zero, _decompressor) ?;
+	let _source_right = load (_path_right.as_ref (), &mut _tokens, &_record_pattern, _record_zero, _decompressor) ?;
 	_tokens.sort ();
 	
 	if verbose { eprintln! ("[ii] [42c3ae70]  indexing..."); }
@@ -364,16 +400,90 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff, _to
 
 
 
-fn load (_path : & Path, _tokens : &mut Tokens, _pattern : & regex::bytes::Regex, _zero : bool) -> (Result<Source, io::Error>) {
+fn load (_path : & Path, _tokens : &mut Tokens, _pattern : & regex::bytes::Regex, _zero : bool, _decompressor : Decompressor) -> (Result<Source, io::Error>) {
 	
-	let _delimiter = if _zero { b'\0' } else { b'\n' };
+	let mut _file = fs::File::open (_path) ?;
 	
-	let _file = fs::File::open (_path) ?;
-	let mut _stream = io::BufReader::with_capacity (16 * 1024 * 1024, _file);
+	if _decompressor != Decompressor::None {
+		
+		let mut _filter = match _decompressor {
+			Decompressor::Gzip => {
+				let mut _filter = process::Command::new ("gzip");
+				_filter.arg ("-d");
+				_filter
+			},
+			Decompressor::Bzip2 => {
+				let mut _filter = process::Command::new ("bzip2");
+				_filter.arg ("-d");
+				_filter
+			},
+			Decompressor::Lzip => {
+				let mut _filter = process::Command::new ("lzip");
+				_filter.arg ("-d");
+				_filter
+			},
+			Decompressor::Xz => {
+				let mut _filter = process::Command::new ("xz");
+				_filter.arg ("-d");
+				_filter
+			},
+			Decompressor::Lzma => {
+				let mut _filter = process::Command::new ("lzma");
+				_filter.arg ("-d");
+				_filter
+			},
+			Decompressor::Lz4 => {
+				let mut _filter = process::Command::new ("lz4");
+				_filter.arg ("-d");
+				_filter
+			},
+			Decompressor::Lzo => {
+				let mut _filter = process::Command::new ("lzop");
+				_filter.arg ("-d");
+				_filter
+			},
+			Decompressor::Zstd => {
+				let mut _filter = process::Command::new ("zstd");
+				_filter.arg ("-d");
+				_filter
+			},
+			Decompressor::None =>
+				unreachable! ("[9c7ca4b5]"),
+		};
+		_filter.stdin (process::Stdio::from (_file));
+		_filter.stdout (process::Stdio::piped ());
+		_filter.stderr (process::Stdio::inherit ());
+		
+		let mut _filter = _filter.spawn () ?;
+		let mut _stream = _filter.stdout.as_mut () .unwrap ();
+		
+		let _outcome = load_from_stream (_stream, _path, _tokens, _pattern, _zero);
+		
+		if _outcome.is_err () {
+			_filter.kill () ?;
+		}
+		let _exit = _filter.wait () ?;
+		if _outcome.is_ok () && ! _exit.success () {
+			return Err (io::Error::new (io::ErrorKind::Other, "[7fadf032]  filter failed"));
+		}
+		
+		return _outcome;
+		
+	} else {
+		
+		return load_from_stream (&mut _file, _path, _tokens, _pattern, _zero);
+	}
+}
+
+
+fn load_from_stream <Stream : io::Read> (_stream : &mut Stream, _path : & Path, _tokens : &mut Tokens, _pattern : & regex::bytes::Regex, _zero : bool) -> (Result<Source, io::Error>) {
+	
+	let mut _stream = io::BufReader::with_capacity (16 * 1024 * 1024, _stream);
 	
 	let mut _records = Vec::with_capacity (128 * 1024);
 	
 	{
+		let _delimiter = if _zero { b'\0' } else { b'\n' };
 		let mut _buffer = Vec::with_capacity (8 * 1024);
 		let mut _line : usize = 0;
 		
