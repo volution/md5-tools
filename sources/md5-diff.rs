@@ -130,25 +130,47 @@ fn main () -> (Result<(), io::Error>) {
 	#[ cfg (feature = "profile") ]
 	profiler.lock () .unwrap () .start ("./target/md5-diff.profile") .unwrap ();
 	
-	let (_path_left, _path_right) = {
+	let (_path_left, _path_right, _zero) = {
+		
+		let mut _zero = false;
 		
 		let _arguments = env::args_os ();
-		if _arguments.len () != 3 {
+		let mut _arguments = _arguments.into_iter () .peekable ();
+		
+		loop {
+			_arguments.next () .unwrap ();
+			match _arguments.peek () {
+				Some (_argument) if _argument == "--zero" =>
+					_zero = true,
+				Some (_argument) if _argument == "--" => {
+					_arguments.next () .unwrap ();
+					break;
+				},
+				Some (_argument) if _argument.is_empty () =>
+					return Err (io::Error::new (io::ErrorKind::Other, "[874af75c]  unexpected empty argument")),
+				Some (_argument) if _argument.as_bytes () [0] == b'-' =>
+					return Err (io::Error::new (io::ErrorKind::Other, "[874af75c]  unexpected flag")),
+				Some (_) =>
+					break,
+				None =>
+					break,
+			}
+		}
+		
+		if _arguments.len () != 2 {
 			return Err (io::Error::new (io::ErrorKind::Other, "[6f5bd360]  unexpected arguments"));
 		}
 		
-		let mut _arguments = _arguments.into_iter ();
-		_arguments.next () .unwrap ();
 		let _path_left = _arguments.next () .unwrap ();
 		let _path_right = _arguments.next () .unwrap ();
 		
-		(_path_left, _path_right)
+		(_path_left, _path_right, _zero)
 	};
 	
 	if verbose { eprintln! ("[ii] [42c3ae70]  loading..."); }
 	let mut _tokens = Tokens::new ();
-	let _source_left = load (_path_left.as_ref (), &mut _tokens) ?;
-	let _source_right = load (_path_right.as_ref (), &mut _tokens) ?;
+	let _source_left = load (_path_left.as_ref (), &mut _tokens, _zero) ?;
+	let _source_right = load (_path_right.as_ref (), &mut _tokens, _zero) ?;
 	_tokens.sort ();
 	
 	if verbose { eprintln! ("[ii] [42c3ae70]  indexing..."); }
@@ -308,7 +330,9 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff, _to
 
 
 
-fn load (_path : & Path, _tokens : &mut Tokens) -> (Result<Source, io::Error>) {
+fn load (_path : & Path, _tokens : &mut Tokens, _zero : bool) -> (Result<Source, io::Error>) {
+	
+	let _delimiter = if _zero { b'\0' } else { b'\n' };
 	
 	let _file = fs::File::open (_path) ?;
 	let mut _stream = io::BufReader::with_capacity (16 * 1024 * 1024, _file);
@@ -325,10 +349,10 @@ fn load (_path : & Path, _tokens : &mut Tokens) -> (Result<Source, io::Error>) {
 			
 			_line += 1;
 			_buffer.clear ();
-			_stream.read_until (b'\n', &mut _buffer) ?;
+			_stream.read_until (_delimiter, &mut _buffer) ?;
 			
 			match _buffer.pop () {
-				Some (b'\n') => (),
+				Some (_byte) if _byte == _delimiter => (),
 				Some (_byte) => _buffer.push (_byte),
 				None => break,
 			}
