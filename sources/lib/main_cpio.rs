@@ -110,7 +110,7 @@ pub fn main () -> (Result<(), io::Error>) {
 			break;
 		}
 		
-		if (_metadata.mode () & libc::S_IFMT) == libc::S_IFREG {
+		if (_metadata.mode () & (libc::S_IFMT as u32)) == (libc::S_IFREG as u32) {
 			
 			let _hash = if (_metadata.file_size () > 0) || (_metadata.nlink () <= 1) {
 				match _hash.kind {
