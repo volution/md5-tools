@@ -3,11 +3,30 @@
 
 
 
+<< run / md5-create / debug
+	"${ZRUN[@]}" ':: build / rust / debug' --bin md5-create --quiet
+	exec -- \
+		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
+		"./target/${CARGO_TARGET}/debug/md5-create" "${@}" \
+	#
+!!
+
+<< run / md5-create / release
+	"${ZRUN[@]}" ':: build / rust / release' --bin md5-create --quiet
+	exec -- \
+		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
+		"./target/${CARGO_TARGET}/release/md5-create" "${@}" \
+	#
+!!
+
+
+
+
 << run / md5-diff / debug
 	"${ZRUN[@]}" ':: build / rust / debug' --bin md5-diff --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		./target/debug/md5-diff "${@}" \
+		"./target/${CARGO_TARGET}/debug/md5-diff" "${@}" \
 	#
 !!
 
@@ -15,16 +34,18 @@
 	"${ZRUN[@]}" ':: build / rust / release' --bin md5-diff --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		./target/release/md5-diff "${@}" \
+		"./target/${CARGO_TARGET}/release/md5-diff" "${@}" \
 	#
 !!
+
+
 
 
 << run / md5-cpio / debug
 	"${ZRUN[@]}" ':: build / rust / debug' --bin md5-cpio --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		./target/debug/md5-cpio "${@}" \
+		"./target/${CARGO_TARGET}/debug/md5-cpio" "${@}" \
 	#
 !!
 
@@ -32,9 +53,11 @@
 	"${ZRUN[@]}" ':: build / rust / release' --bin md5-cpio --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		./target/release/md5-cpio "${@}" \
+		"./target/${CARGO_TARGET}/release/md5-cpio" "${@}" \
 	#
 !!
+
+
 
 
 :: build / rust / debug :: export -- CARGO_INCREMENTAL=1 ; exec -- "${ZRUN[@]}" ':: build / rust' "${@}"

@@ -20,16 +20,20 @@ sha-1 = "*"
 sha2 = "*"
 sha3 = "*"
 regex = "*"
-lazy_static = "*"
+walkdir = "*"
 cpuprofiler = { version = "*", optional = true }
 
 [[bin]]
-name = "md5-cpio"
-path = "./sources/bin/md5-cpio.rs"
+name = "md5-create"
+path = "./sources/bin/md5-create.rs"
 
 [[bin]]
 name = "md5-diff"
 path = "./sources/bin/md5-diff.rs"
+
+[[bin]]
+name = "md5-cpio"
+path = "./sources/bin/md5-cpio.rs"
 
 [lib]
 name = "md5_tools"
