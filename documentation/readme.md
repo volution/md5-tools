@@ -118,6 +118,10 @@ md5-diff ./old.md5 ./new.md5
 
 ### `md5-cpio` usage
 
+Besides the example bellow it also supports the following features:
+* `--zero` -- to generate lines that are terminated by `\0` (as opposed by `\n`);
+* `--md5`, `--sha1`, `--sha224`, `--sha256`, `--sha384`, `--sha512`, `--sha3-224`, `--sha3-256`, `--sha3-384`, `--sha3-512` -- to generate fingerprints for one of these algorithms;
+
 ````
 find ./sources -depth -print | cpio -o -H newc | gzip > ./archive.cpio.gz
 ````
