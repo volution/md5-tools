@@ -239,9 +239,9 @@ pub fn main () -> (Result<(), io::Error>) {
 	let _diff = diff (&_source_left, &_index_left, &_source_right, &_index_right, &_tokens);
 	
 	if verbose { eprintln! ("[ii] [92d696c3]  reporting statistics..."); }
+	report_diff_statistics ('A', 'B', &_diff);
 	report_source_statistics ('A', &_source_left, &_statistics_left);
 	report_source_statistics ('B', &_source_right, &_statistics_right);
-	report_diff_statistics ('A', 'B', &_diff);
 	
 	if verbose { eprintln! ("[ii] [eedb34f8]  reporting details..."); }
 	report_diff_entries ('A', 'B', &_diff, &_tokens);
