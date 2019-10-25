@@ -1,14 +1,11 @@
 
 
-use ::digest;
-use ::md5;
-use ::sha1;
-use ::sha2;
-use ::sha3;
 use ::walkdir;
 
+use crate::digests::*;
 use crate::hashes::*;
 use crate::prelude::*;
+use crate::sinks::*;
 
 
 
@@ -79,12 +76,12 @@ pub fn main () -> (Result<(), io::Error>) {
 		(_path, _hash, _zero)
 	};
 	
+	
 	let mut _output = io::stdout ();
 	let mut _output = _output.lock ();
 	
-	let mut _output = io::BufWriter::with_capacity (16 * 1024 * 1024, _output);
-	
-	let _delimiter = if _zero { b"\0" } else { b"\n" };
+	let mut _sink = StandardHashesSink::new (&mut _output, _zero);
+	let mut _hash_buffer = Vec::with_capacity (128);
 	
 	
 	let mut _walker = walkdir::WalkDir::new (&_path)
@@ -108,58 +105,11 @@ pub fn main () -> (Result<(), io::Error>) {
 			
 			let mut _file = fs::File::open (_entry.path ()) ?;
 			
-			match _hash.kind {
-				HashAlgorithmKind::MD5 =>
-					digest::<md5::Md5, _, _> (&mut _file, &mut _output) ?,
-				HashAlgorithmKind::SHA1 =>
-					digest::<sha1::Sha1, _, _> (&mut _file, &mut _output) ?,
-				HashAlgorithmKind::SHA2_224 =>
-					digest::<sha2::Sha224, _, _> (&mut _file, &mut _output) ?,
-				HashAlgorithmKind::SHA2_256 =>
-					digest::<sha2::Sha256, _, _> (&mut _file, &mut _output) ?,
-				HashAlgorithmKind::SHA2_384 =>
-					digest::<sha2::Sha384, _, _> (&mut _file, &mut _output) ?,
-				HashAlgorithmKind::SHA2_512 =>
-					digest::<sha2::Sha512, _, _> (&mut _file, &mut _output) ?,
-				HashAlgorithmKind::SHA3_224 =>
-					digest::<sha3::Sha3_224, _, _> (&mut _file, &mut _output) ?,
-				HashAlgorithmKind::SHA3_256 =>
-					digest::<sha3::Sha3_256, _, _> (&mut _file, &mut _output) ?,
-				HashAlgorithmKind::SHA3_384 =>
-					digest::<sha3::Sha3_384, _, _> (&mut _file, &mut _output) ?,
-				HashAlgorithmKind::SHA3_512 =>
-					digest::<sha3::Sha3_512, _, _> (&mut _file, &mut _output) ?,
-			}
+			_hash_buffer.clear ();
+			digest (_hash, &mut _file, &mut _hash_buffer) ?;
 			
-			let _path = _entry.path ();
-			
-			let _path_prefix =
-				if _path.starts_with ("/") { "" }
-				else if _path.starts_with ("./") { "" }
-				else if _path.starts_with ("../") { "" }
-				else { "./" };
-			
-			_output.write_all (b" *") ?;
-			_output.write_all (_path.as_os_str () .as_bytes ()) ?;
-			_output.write_all (_delimiter) ?;
+			_sink.handle (_entry.path () .as_os_str (), &_hash_buffer) ?;
 		}
-	}
-	
-	return Ok (());
-}
-
-
-
-
-fn digest <Hash : digest::Digest + io::Write, Input : io::Read, Output : io::Write> (_input : &mut Input, _output : &mut io::BufWriter<Output>) -> (io::Result<()>)
-{
-	
-	let mut _hasher = Hash::new ();
-	io::copy (_input, &mut _hasher) ?;
-	let _hash = _hasher.result ();
-	
-	for _byte in _hash.as_slice () {
-		_output.write_fmt (format_args! ("{:02x}", _byte)) ?;
 	}
 	
 	return Ok (());

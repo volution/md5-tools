@@ -1,15 +1,12 @@
 
 
 use ::cpio::newc as cpio;
-use ::digest;
 use ::libc;
-use ::md5;
-use ::sha1;
-use ::sha2;
-use ::sha3;
 
+use crate::digests::*;
 use crate::hashes::*;
 use crate::prelude::*;
+use crate::sinks::*;
 
 
 
@@ -78,15 +75,17 @@ pub fn main () -> (Result<(), io::Error>) {
 		(_hash, _zero)
 	};
 	
-	let mut _input = io::stdin ();
-	let mut _input = _input.lock ();
 	
 	let mut _output = io::stdout ();
 	let mut _output = _output.lock ();
 	
-	let mut _output = io::BufWriter::with_capacity (16 * 1024 * 1024, _output);
+	let mut _sink = StandardHashesSink::new (&mut _output, _zero);
+	let mut _hash_buffer = Vec::with_capacity (128);
+	let mut _path_buffer = Vec::with_capacity (4 * 1024);
 	
-	let _delimiter = if _zero { b"\0" } else { b"\n" };
+	
+	let mut _input = io::stdin ();
+	let mut _input = _input.lock ();
 	
 	loop {
 		
@@ -100,31 +99,16 @@ pub fn main () -> (Result<(), io::Error>) {
 		if (_metadata.mode () & (libc::S_IFMT as u32)) == (libc::S_IFREG as u32) {
 			
 			let _hash = if (_metadata.file_size () > 0) || (_metadata.nlink () <= 1) {
-				match _hash.kind {
-					HashAlgorithmKind::MD5 =>
-						digest::<md5::Md5, _, _> (&mut _record, &mut _output) ?,
-					HashAlgorithmKind::SHA1 =>
-						digest::<sha1::Sha1, _, _> (&mut _record, &mut _output) ?,
-					HashAlgorithmKind::SHA2_224 =>
-						digest::<sha2::Sha224, _, _> (&mut _record, &mut _output) ?,
-					HashAlgorithmKind::SHA2_256 =>
-						digest::<sha2::Sha256, _, _> (&mut _record, &mut _output) ?,
-					HashAlgorithmKind::SHA2_384 =>
-						digest::<sha2::Sha384, _, _> (&mut _record, &mut _output) ?,
-					HashAlgorithmKind::SHA2_512 =>
-						digest::<sha2::Sha512, _, _> (&mut _record, &mut _output) ?,
-					HashAlgorithmKind::SHA3_224 =>
-						digest::<sha3::Sha3_224, _, _> (&mut _record, &mut _output) ?,
-					HashAlgorithmKind::SHA3_256 =>
-						digest::<sha3::Sha3_256, _, _> (&mut _record, &mut _output) ?,
-					HashAlgorithmKind::SHA3_384 =>
-						digest::<sha3::Sha3_384, _, _> (&mut _record, &mut _output) ?,
-					HashAlgorithmKind::SHA3_512 =>
-						digest::<sha3::Sha3_512, _, _> (&mut _record, &mut _output) ?,
-				}
+				
+				_hash_buffer.clear ();
+				digest (_hash, &mut _record, &mut _hash_buffer) ?;
+				
 			} else {
+				
 				eprintln! ("[ww] [7c9f8eb7]  hard-link detected: `{}`;  ignoring!", _metadata.name ());
-				_output.write_all (_hash.invalid.as_bytes ()) ?;
+				
+				_hash_buffer.clear ();
+				_hash_buffer.extend_from_slice (_hash.invalid_raw);
 			};
 			
 			let _metadata = _record.entry ();
@@ -136,29 +120,14 @@ pub fn main () -> (Result<(), io::Error>) {
 				else if _path.starts_with ("../") { "" }
 				else { "./" };
 			
-			_output.write_all (b" *") ?;
-			_output.write_all (_path.as_bytes ()) ?;
-			_output.write_all (_delimiter) ?;
+			_path_buffer.clear ();
+			_path_buffer.extend_from_slice (_path_prefix.as_bytes ());
+			_path_buffer.extend_from_slice (_path.as_bytes ());
+			
+			_sink.handle (ffi::OsStr::from_bytes (&_path_buffer), &_hash_buffer) ?;
 		}
 		
 		_input = _record.finish () ?;
-	}
-	
-	return Ok (());
-}
-
-
-
-
-fn digest <Hash : digest::Digest + io::Write, Input : io::Read, Output : io::Write> (_input : &mut Input, _output : &mut io::BufWriter<Output>) -> (io::Result<()>)
-{
-	
-	let mut _hasher = Hash::new ();
-	io::copy (_input, &mut _hasher) ?;
-	let _hash = _hasher.result ();
-	
-	for _byte in _hash.as_slice () {
-		_output.write_fmt (format_args! ("{:02x}", _byte)) ?;
 	}
 	
 	return Ok (());

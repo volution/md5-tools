@@ -13,7 +13,7 @@ use ::cpuprofiler::PROFILER as profiler;
 
 
 struct Source {
-	path : PathBuf,
+	path : path::PathBuf,
 	records : Vec<SourceRecord>,
 }
 
@@ -353,7 +353,7 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff, _to
 
 
 
-fn load (_path : & Path, _tokens : &mut Tokens, _pattern : & regex::bytes::Regex, _zero : bool, _decompressor : Decompressor) -> (Result<Source, io::Error>) {
+fn load (_path : & path::Path, _tokens : &mut Tokens, _pattern : & regex::bytes::Regex, _zero : bool, _decompressor : Decompressor) -> (Result<Source, io::Error>) {
 	
 	let mut _file = fs::File::open (_path) ?;
 	
@@ -429,7 +429,7 @@ fn load (_path : & Path, _tokens : &mut Tokens, _pattern : & regex::bytes::Regex
 }
 
 
-fn load_from_stream <Stream : io::Read> (_stream : &mut Stream, _path : & Path, _tokens : &mut Tokens, _pattern : & regex::bytes::Regex, _zero : bool) -> (Result<Source, io::Error>) {
+fn load_from_stream <Stream : io::Read> (_stream : &mut Stream, _path : & path::Path, _tokens : &mut Tokens, _pattern : & regex::bytes::Regex, _zero : bool) -> (Result<Source, io::Error>) {
 	
 	let mut _stream = io::BufReader::with_capacity (16 * 1024 * 1024, _stream);
 	
