@@ -1,23 +1,24 @@
 
-# **md5-tools** -- lightweight Rust-based MD5 related tools
+# **md5-tools** -- lightweight Rust-based MD5/SHA-family related tools
 
 
 
 
 ## About
 
-This is a small collection of lightweight Rust-based tools related to MD5 (and in some cases the SHA family) fingerprint files:
-* `md5-diff` -- takes two MD5 files (as produced by `md5sum` or compliant tools) and prints a report of differences between them;
-* `md5-cpio` -- reads from `stdin` a CPIO archive (in `newc` format, as created with `cpio -o -H newc`) and generates to `stdout` an MD5 fingerprints file of all the archive's members (that are files);
-* `md5-create` (for now a Bash script) -- takes one argument (a folder) and creates within it (or if exists the `.md5` folder exists underneath it) a timestamped MD5 fingerprints file of all the folder's members (that are files);  (it ignores symlinks or sub-mount-points;  it also ignores folders that have a `.md5.excluded` file within it;)
+This is a small collection of lightweight Rust-based tools related to MD5 and the SHA family fingerprint files:
+* `md5-diff` -- takes two MD5/SHA files (as produced by `md5sum`/`sha1sum`/`shaXsum` or compliant tools) and prints a report of differences between them;
+* `md5-cpio` -- reads from `stdin` a CPIO archive (in `newc` format, as created with `cpio -o -H newc`) and generates to `stdout` an MD5/SHA fingerprints file of all the archive's members (that are files);
+* `md5-create` (for now a Bash script, supporting only MD5) -- takes one argument (a folder) and creates within it (or if exists the `.md5` folder exists underneath it) a timestamped MD5 fingerprints file of all the folder's members (that are files);  (it ignores symlinks or sub-mount-points;  it also ignores folders that have a `.md5.excluded` file within it;)
 
 I have used all of these to curate my personal file-systems and backups, and they can handle large amounts of data.
 (For example `md5-diff` was used on a ~3 million lines long MD5 file.)
 
 Regarding the insecurity of MD5:
+* **although the tools are named `md5-*`, they do support the SHA family of hashes!**
 * yes, I know that MD5 is cryptographically broken;
 * yes, I know we should migrate to SHA-2 / SHA-3 family of hash functions;
-* **but for the purpose of identifying duplicate, missing, or corrupted files I personally think it is still acceptable**;
+* **but for the purpose of identifying duplicate, missing, or corrupted files I personally think it is still acceptable;**
 
 
 
