@@ -47,6 +47,11 @@
 	"${ZRUN[@]}" ':: workbench / rustup / run' target add -- x86_64-unknown-linux-musl
 !!
 
+<< workbench / rustup / install / targets / x86_64-apple-darwin
+	test "${#}" -eq 0
+	"${ZRUN[@]}" ':: workbench / rustup / run' target add -- x86_64-apple-darwin
+!!
+
 
 
 
@@ -64,6 +69,12 @@
 			--remap-path-prefix "${CARGO_HOME}/registry/src=/home/build/cargo"
 		)
 	export -- RUSTFLAGS="${_rustflags[*]}"
+	if test -n "${CARGO_CROSS_BIN:-}" ; then
+		PATH="$( exec -- readlink -e -- "${CARGO_CROSS_BIN}" ):${PATH}"
+	fi
+	if test -n "${CARGO_CROSS_RUSTFLAGS:-}" ; then
+		RUSTFLAGS="${CARGO_CROSS_RUSTFLAGS} ${RUSTFLAGS}"
+	fi
 	exec -- nice -n 19 -- cargo "${@}"
 !!
 
@@ -78,4 +89,16 @@
 
 :: workbench / cargo / target / x86_64-unknown-linux-gnu :: export -- CARGO_TARGET=x86_64-unknown-linux-gnu
 :: workbench / cargo / target / x86_64-unknown-linux-musl :: export -- CARGO_TARGET=x86_64-unknown-linux-musl
+
+
+##{{
+	NOTE:
+		https://wapl.es/rust/2019/02/17/rust-cross-compile-linux-to-macos.html
+		https://github.com/tpoechtrager/osxcross
+		https://github.com/phracker/MacOSX-SDKs
+		https://s3.dockerproject.org/darwin/v2/MacOSX10.10.sdk.tar.xz
+		https://s3.dockerproject.org/darwin/v2/MacOSX10.11.sdk.tar.xz
+##}}
+
+:: workbench / cargo / target / x86_64-apple-darwin :: export -- CARGO_TARGET=x86_64-apple-darwin CARGO_CROSS_BIN=./.scratch/osxcross/bin CARGO_CROSS_RUSTFLAGS='-C linker=x86_64-apple-darwin14-clang -C ar=x86_64-apple-darwin14-ar'
 
