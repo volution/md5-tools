@@ -1,38 +1,10 @@
 
 
-use ::std::cmp;
-use ::std::env;
-use ::std::ffi;
-use ::std::fs;
-use ::std::io;
-use ::std::process;
-use ::std::str;
-
-use ::std::collections::HashMap;
-use ::std::convert::{AsRef, From, Into};
-use ::std::io::BufRead;
-use ::std::option::{Option::Some, Option::None};
-use ::std::path::{Path, PathBuf};
-use ::std::rc::Rc;
-use ::std::result::{Result, Result::Ok, Result::Err};
-use ::std::string::String;
-use ::std::vec::Vec;
-
-use ::std::eprintln;
-use ::std::println;
-use ::std::panic;
-use ::std::unreachable;
-
-use ::std::clone::Clone as _;
-use ::std::iter::Iterator as _;
-use ::std::iter::IntoIterator as _;
-use ::std::iter::ExactSizeIterator as _;
-use ::std::iter::Extend as _;
-use ::std::os::unix::ffi::OsStrExt as _;
-
 use ::regex;
 
+use crate::core::*;
 use crate::hashes::*;
+use crate::prelude::*;
 
 #[ cfg (feature = "profile") ]
 use ::cpuprofiler::PROFILER as profiler;
@@ -107,11 +79,6 @@ struct Tokens {
 	hash_key_empty : HashKey,
 	hash_key_invalid : HashKey,
 }
-
-type HashValue = String;
-type HashValueRef = str;
-type PathValue = ffi::OsString;
-type PathValueRef = ffi::OsStr;
 
 type HashKey = usize;
 type PathKey = usize;

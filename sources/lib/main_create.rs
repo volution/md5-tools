@@ -1,27 +1,14 @@
 
 
-use ::std::env;
-use ::std::fs;
-use ::std::io;
-
-use ::std::format_args;
-
-use ::std::io::Write as _;
-use ::std::iter::Iterator as _;
-use ::std::iter::IntoIterator as _;
-use ::std::iter::ExactSizeIterator as _;
-use ::std::option::{Option::Some, Option::None};
-use ::std::result::{Result, Result::Ok, Result::Err};
-use ::std::os::unix::ffi::OsStrExt as _;
-
-use ::walkdir;
+use ::digest;
 use ::md5;
 use ::sha1;
 use ::sha2;
 use ::sha3;
-use ::digest;
+use ::walkdir;
 
 use crate::hashes::*;
+use crate::prelude::*;
 
 
 
