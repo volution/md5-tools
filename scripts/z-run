@@ -3,4 +3,5 @@
 
 && ./build.z-run
 && ./tests.z-run
+&& ./workbench.z-run
 

@@ -1,0 +1,59 @@
+#!/dev/null
+
+
+
+
+<< workbench / scratch / initialize
+	test "${#}" -eq 0
+	if test ! -d ./.scratch ; then
+		_scratch_store="${TMPDIR:-/tmp}/rust--${UID}--${RANDOM}-${RANDOM}-${RANDOM}-${RANDOM}"
+		mkdir -- "${_scratch_store}"
+		_scratch_store="$( exec -- readlink -e -- "${_scratch_store}" )"
+		ln -s -f -T -- "${_scratch_store}" ./.scratch
+	fi
+	for _folder in rustup cargo rustout ; do
+		if test ! -d "./.scratch/${_folder}" ; then
+			mkdir -- "./.scratch/${_folder}"
+		fi
+	done
+	if test ! -d ./target ; then
+		ln -s -f -T -- ./.scratch/rustout ./target
+	fi
+!!
+
+
+
+
+<< workbench / rustup / initialize
+	test "${#}" -eq 0
+	if test ! -e ./.scratch/rustup/.initialized ; then
+		curl -s -o ./.scratch/rustup/rustup-init.tmp -- https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+		chmod +x -- ./.scratch/rustup/rustup-init.tmp
+		mv -n -T -- ./.scratch/rustup/rustup-init.tmp ./.scratch/rustup/rustup-init
+		export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.scratch/rustup )"
+		export -- CARGO_HOME="$( exec -- readlink -e -- ./.scratch/cargo )"
+		nice -n 19 -- ./.scratch/rustup/rustup-init --profile minimal --no-modify-path --quiet -y
+		touch -- ./.scratch/rustup/.initialized
+	fi
+!!
+
+
+
+
+<< workbench / cargo / run
+	export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.scratch/rustup )"
+	export -- CARGO_HOME="$( exec -- readlink -e -- ./.scratch/cargo )"
+	export -- CARGO_TARGET_DIR="$( exec -- readlink -e -- ./.scratch/rustout )"
+	export -- PATH="$( exec -- readlink -e -- "${RUSTUP_HOME}/toolchains/stable-x86_64-unknown-linux-gnu/bin" ):$( exec -- readlink -e -- "${CARGO_HOME}/bin" ):${PATH}"
+	_rustflags=(
+			--remap-path-prefix "$( exec -- readlink -e -- . )=/home/build"
+			--remap-path-prefix "$( exec -- readlink -e -- ./sources )=/home/build/sources"
+			--remap-path-prefix "$( exec -- readlink -m -- "${HOME}/.cargo/registry/src" )=/home/build/cargo"
+			--remap-path-prefix "${HOME}/.cargo/registry/src=/home/build/cargo"
+			--remap-path-prefix "$( exec -- readlink -m -- "${CARGO_HOME}/registry/src" )=/home/build/cargo"
+			--remap-path-prefix "${CARGO_HOME}/registry/src=/home/build/cargo"
+		)
+	export -- RUSTFLAGS="${_rustflags[*]}"
+	exec -- nice -n 19 -- cargo "${@}"
+!!
+

@@ -3,7 +3,7 @@
 !.gitignore
 !.z-run
 
-/target/
+/target
 
 *~
 *#

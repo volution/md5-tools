@@ -37,20 +37,13 @@
 !!
 
 
-:: build / rust / debug :: exec -- "${ZRUN[@]}" ':: build / rust' "${@}"
-:: build / rust / release :: exec -- "${ZRUN[@]}" ':: build / rust' --release "${@}"
+:: build / rust / debug :: export -- CARGO_INCREMENTAL=1 ; exec -- "${ZRUN[@]}" ':: build / rust' "${@}"
+:: build / rust / release :: export -- CARGO_INCREMENTAL=0 ; exec -- "${ZRUN[@]}" ':: build / rust' --release "${@}"
 
 --<< build / rust
-	_rustflags=(
-			--remap-path-prefix "$( exec -- readlink -e -- . )=/home/build"
-			--remap-path-prefix "$( exec -- readlink -e -- ./sources )=/home/build/sources"
-			--remap-path-prefix "$( exec -- readlink -e -- "${HOME}/.cargo/registry/src" )=/home/build/sources"
-			--remap-path-prefix "${HOME}/.cargo/registry/src=/home/build/sources"
-		)
-	export -- RUSTFLAGS="${_rustflags[*]}"
-	exec -- cargo build \
-		--offline \
-		"${@}" \
+	exec -- "${ZRUN[@]}" ':: workbench / cargo / run' \
+			build \
+			"${@}" \
 	#
 !!
 
