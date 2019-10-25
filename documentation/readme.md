@@ -40,6 +40,22 @@ Also empty files are detected by the hash of an empty string (i.e. for MD5 an em
 md5-diff ./old.md5 ./new.md5
 ````
 ````
+##  Diff statistics (A) vs (B)
+##    * hashes
+##      * distinct hashes       :     8783
+##      * unique hashes in (A)  :      879
+##      * unique hashes in (B)  :      884
+##      * common hashes         :     7020
+##        * matching paths      :     7019
+##        * conflicting paths   :        1
+##    * paths
+##      * distinct paths        :     8353
+##      * unique paths in (A)   :        1
+##      * unique paths in (B)   :        6
+##      * common paths          :     8346
+##        * matching hashes     :     7467
+##        * conflicting hashes  :      879
+
 ##  Dataset (A) statistics
 ##    * records                 :     8347
 ##    * hashes
@@ -65,22 +81,6 @@ md5-diff ./old.md5 ./new.md5
 ##      * empty files           :        0
 ##      * invalid files         :        0
 ##    * source: `/tmp/man-b.md5`
-
-##  Diff statistics (A) vs (B)
-##    * hashes
-##      * distinct hashes       :     8783
-##      * unique hashes in (A)  :      879
-##      * unique hashes in (B)  :      884
-##      * common hashes         :     7020
-##        * matching paths      :     7019
-##        * conflicting paths   :        1
-##    * paths
-##      * distinct paths        :     8353
-##      * unique paths in (A)   :        1
-##      * unique paths in (B)   :        6
-##      * common paths          :     8346
-##        * matching hashes     :     7467
-##        * conflicting hashes  :      879
 
 ####  Hashes unique in (A) :: 879
 
