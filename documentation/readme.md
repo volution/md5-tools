@@ -6,7 +6,7 @@
 
 ## About
 
-This is a small collection of lightweight Rust-based tools related to MD5 fingerprint files:
+This is a small collection of lightweight Rust-based tools related to MD5 (and in some cases the SHA family) fingerprint files:
 * `md5-diff` -- takes two MD5 files (as produced by `md5sum` or compliant tools) and prints a report of differences between them;
 * `md5-cpio` -- reads from `stdin` a CPIO archive (in `newc` format, as created with `cpio -o -H newc`) and generates to `stdout` an MD5 fingerprints file of all the archive's members (that are files);
 * `md5-create` (for now a Bash script) -- takes one argument (a folder) and creates within it (or if exists the `.md5` folder exists underneath it) a timestamped MD5 fingerprints file of all the folder's members (that are files);  (it ignores symlinks or sub-mount-points;  it also ignores folders that have a `.md5.excluded` file within it;)
@@ -25,6 +25,15 @@ Regarding the insecurity of MD5:
 ## Usage examples
 
 ### `md5-diff` usage
+
+Besides the example bellow it also supports the following features:
+* `--zero` -- to handle files where lines are terminated by `\0` (as opposed by `\n`);
+* `--gzip`, `--bzip2`, `--lzip`, `--xz`, `--lzma`, `--lz4`, `--lzo`, `zstd` -- to handle files that are compressed;  (requires those decompressors to be installed);
+* `--md5`, `--sha1`, `--sha224`, `--sha256`, `--sha384`, `--sha512`, `--sha3-224`, `--sha3-256`, `--sha3-384`, `--sha3-512` -- to handle files that contain fingerprints for these algorithms;
+* `--` -- denotes the end of flags, and the start of the two files to compare;
+
+Please note that an all zero hash (i.e. `0000....`) of the proper length is considered an "invalid file";  the normal hashing tools don't generate these hashes, but `md5-cpio` does for hard-links.
+Also empty files are detected by the hash of an empty string (i.e. for MD5 an empty file has the hash `d41d8cd98f00b204e9800998ecf8427e`).
 
 ````
 md5-diff ./old.md5 ./new.md5
