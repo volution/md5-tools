@@ -4,7 +4,6 @@ use ::std::env;
 use ::std::fs;
 use ::std::io;
 
-use ::std::eprintln;
 use ::std::format_args;
 
 use ::std::io::Write as _;
@@ -16,7 +15,6 @@ use ::std::result::{Result, Result::Ok, Result::Err};
 use ::std::os::unix::ffi::OsStrExt as _;
 
 use ::walkdir;
-use ::libc;
 use ::md5;
 use ::sha1;
 use ::sha2;

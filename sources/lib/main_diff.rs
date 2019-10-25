@@ -5,7 +5,6 @@ use ::std::env;
 use ::std::ffi;
 use ::std::fs;
 use ::std::io;
-use ::std::path;
 use ::std::process;
 use ::std::str;
 
@@ -25,8 +24,6 @@ use ::std::panic;
 use ::std::unreachable;
 
 use ::std::clone::Clone as _;
-use ::std::cmp::Ord as _;
-use ::std::ops::Deref as _;
 use ::std::iter::Iterator as _;
 use ::std::iter::IntoIterator as _;
 use ::std::iter::ExactSizeIterator as _;
@@ -51,6 +48,7 @@ struct Source {
 struct SourceRecord {
 	hash : HashKey,
 	path : PathKey,
+	#[ allow (dead_code) ]
 	line : usize,
 }
 
@@ -829,5 +827,6 @@ impl Tokens {
 }
 
 
+#[ allow (non_upper_case_globals) ]
 static verbose : bool = false;
 

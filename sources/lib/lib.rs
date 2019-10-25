@@ -1,7 +1,6 @@
 
 
-#![no_implicit_prelude]
-#![ allow (unused_imports, dead_code, non_upper_case_globals) ]
+#![ no_implicit_prelude ]
 
 
 pub mod hashes;
