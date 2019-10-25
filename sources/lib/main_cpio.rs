@@ -1,8 +1,5 @@
 
 
-#![no_implicit_prelude]
-
-
 use ::std::env;
 use ::std::io;
 
@@ -25,12 +22,12 @@ use ::sha2;
 use ::sha3;
 use ::digest;
 
-use ::md5_tools::hashes::*;
+use crate::hashes::*;
 
 
 
 
-fn main () -> (Result<(), io::Error>) {
+pub fn main () -> (Result<(), io::Error>) {
 	
 	let (_hash, _zero) = {
 		

@@ -25,11 +25,11 @@ cpuprofiler = { version = "0.0.3", optional = true }
 
 [[bin]]
 name = "md5-cpio"
-path = "./sources/md5-cpio.rs"
+path = "./sources/bin/md5-cpio.rs"
 
 [[bin]]
 name = "md5-diff"
-path = "./sources/md5-diff.rs"
+path = "./sources/bin/md5-diff.rs"
 
 [lib]
 name = "md5_tools"

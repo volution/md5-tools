@@ -1,9 +1,5 @@
 
 
-#![ no_implicit_prelude ]
-#![ allow (unused_imports, dead_code, non_upper_case_globals) ]
-
-
 use ::std::cmp;
 use ::std::env;
 use ::std::ffi;
@@ -39,7 +35,7 @@ use ::std::os::unix::ffi::OsStrExt as _;
 
 use ::regex;
 
-use ::md5_tools::hashes::*;
+use crate::hashes::*;
 
 #[ cfg (feature = "profile") ]
 use ::cpuprofiler::PROFILER as profiler;
@@ -140,7 +136,7 @@ enum Decompressor {
 
 
 
-fn main () -> (Result<(), io::Error>) {
+pub fn main () -> (Result<(), io::Error>) {
 	
 	#[ cfg (feature = "profile") ]
 	profiler.lock () .unwrap () .start ("./target/md5-diff.profile") .unwrap ();
