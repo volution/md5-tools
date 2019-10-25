@@ -43,6 +43,7 @@
 --<< build / rust
 	exec -- "${ZRUN[@]}" ':: workbench / cargo / run' \
 			build \
+			--target "${CARGO_TARGET}" \
 			"${@}" \
 	#
 !!

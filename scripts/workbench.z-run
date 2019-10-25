@@ -26,15 +26,25 @@
 
 << workbench / rustup / initialize
 	test "${#}" -eq 0
-	if test ! -e ./.scratch/rustup/.initialized ; then
-		curl -s -o ./.scratch/rustup/rustup-init.tmp -- https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
-		chmod +x -- ./.scratch/rustup/rustup-init.tmp
-		mv -n -T -- ./.scratch/rustup/rustup-init.tmp ./.scratch/rustup/rustup-init
-		export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.scratch/rustup )"
-		export -- CARGO_HOME="$( exec -- readlink -e -- ./.scratch/cargo )"
-		nice -n 19 -- ./.scratch/rustup/rustup-init --profile minimal --no-modify-path --quiet -y
-		touch -- ./.scratch/rustup/.initialized
-	fi
+	test ! -e ./.scratch/rustup/.initialized
+	curl -s -o ./.scratch/rustup/rustup-init.tmp -- https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+	chmod +x -- ./.scratch/rustup/rustup-init.tmp
+	mv -n -T -- ./.scratch/rustup/rustup-init.tmp ./.scratch/rustup/rustup-init
+	export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.scratch/rustup )"
+	export -- CARGO_HOME="$( exec -- readlink -e -- ./.scratch/cargo )"
+	nice -n 19 -- ./.scratch/rustup/rustup-init --profile minimal --no-modify-path --quiet -y
+	touch -- ./.scratch/rustup/.initialized
+!!
+
+
+<< workbench / rustup / install / targets / x86_64-unknown-linux-gnu
+	test "${#}" -eq 0
+	"${ZRUN[@]}" ':: workbench / rustup / run' target add -- x86_64-unknown-linux-gnu
+!!
+
+<< workbench / rustup / install / targets / x86_64-unknown-linux-musl
+	test "${#}" -eq 0
+	"${ZRUN[@]}" ':: workbench / rustup / run' target add -- x86_64-unknown-linux-musl
 !!
 
 
@@ -56,4 +66,16 @@
 	export -- RUSTFLAGS="${_rustflags[*]}"
 	exec -- nice -n 19 -- cargo "${@}"
 !!
+
+<< workbench / rustup / run
+	export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.scratch/rustup )"
+	export -- CARGO_HOME="$( exec -- readlink -e -- ./.scratch/cargo )"
+	export -- CARGO_TARGET_DIR="$( exec -- readlink -e -- ./.scratch/rustout )"
+	export -- PATH="$( exec -- readlink -e -- "${RUSTUP_HOME}/toolchains/stable-x86_64-unknown-linux-gnu/bin" ):$( exec -- readlink -e -- "${CARGO_HOME}/bin" ):${PATH}"
+	exec -- nice -n 19 -- rustup "${@}"
+!!
+
+
+:: workbench / cargo / target / x86_64-unknown-linux-gnu :: export -- CARGO_TARGET=x86_64-unknown-linux-gnu
+:: workbench / cargo / target / x86_64-unknown-linux-musl :: export -- CARGO_TARGET=x86_64-unknown-linux-musl
 
