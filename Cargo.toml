@@ -31,6 +31,10 @@ path = "./sources/md5-cpio.rs"
 name = "md5-diff"
 path = "./sources/md5-diff.rs"
 
+[lib]
+name = "md5_tools"
+path = "./sources/lib/lib.rs"
+
 [profile.release]
 opt-level = 3
 codegen-units = 1
