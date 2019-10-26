@@ -75,6 +75,9 @@
 	if test -n "${CARGO_CROSS_RUSTFLAGS:-}" ; then
 		RUSTFLAGS="${CARGO_CROSS_RUSTFLAGS} ${RUSTFLAGS}"
 	fi
+	if test -n "${CARGO_EXTRA_RUSTFLAGS:-}" ; then
+		RUSTFLAGS="${CARGO_EXTRA_RUSTFLAGS} ${RUSTFLAGS}"
+	fi
 	exec -- nice -n 19 -- cargo "${@}"
 !!
 

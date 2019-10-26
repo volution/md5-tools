@@ -4,6 +4,7 @@
 
 
 << run / md5-create / debug
+	export -- CARGO_TARGET="${CARGO_TARGET:-x86_64-unknown-linux-gnu}"
 	"${ZRUN[@]}" ':: build / rust / debug' --bin md5-create --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
@@ -23,6 +24,7 @@
 
 
 << run / md5-diff / debug
+	export -- CARGO_TARGET="${CARGO_TARGET:-x86_64-unknown-linux-gnu}"
 	"${ZRUN[@]}" ':: build / rust / debug' --bin md5-diff --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
@@ -42,6 +44,7 @@
 
 
 << run / md5-cpio / debug
+	export -- CARGO_TARGET="${CARGO_TARGET:-x86_64-unknown-linux-gnu}"
 	"${ZRUN[@]}" ':: build / rust / debug' --bin md5-cpio --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
@@ -60,8 +63,16 @@
 
 
 
-:: build / rust / debug :: export -- CARGO_INCREMENTAL=1 ; exec -- "${ZRUN[@]}" ':: build / rust' "${@}"
-:: build / rust / release :: export -- CARGO_INCREMENTAL=0 ; exec -- "${ZRUN[@]}" ':: build / rust' --release "${@}"
+<< build / rust / debug
+	export -- CARGO_INCREMENTAL=1
+	exec -- "${ZRUN[@]}" ':: build / rust' "${@}"
+!!
+
+<< build / rust / release
+	export -- CARGO_INCREMENTAL=0
+	export -- CARGO_EXTRA_RUSTFLAGS='-C link-args=-s'
+	exec -- "${ZRUN[@]}" ':: build / rust' --release "${@}"
+!!
 
 --<< build / rust
 	exec -- "${ZRUN[@]}" ':: workbench / cargo / run' \
