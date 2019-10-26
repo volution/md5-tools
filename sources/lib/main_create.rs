@@ -39,6 +39,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	let mut _ignore_read_errors = false;
 	let mut _report_errors_to_sink = true;
 	let mut _report_errors_to_stderr = true;
+	let mut _io_fadvise = false;
 	
 	{
 		let mut _parser = argparse::ArgumentParser::new ();
@@ -48,7 +49,8 @@ pub fn main () -> (Result<(), io::Error>) {
 		_parser.refer (&mut _walk_follow) .add_option (&["-L", "--follow"], argparse::StoreTrue, "follow symlinks (n.b. arguments are followed)");
 		_parser.refer (&mut _threads_count) .add_option (&["-w", "--workers-count"], argparse::Parse, "hashing workers count (16 by default)");
 		_parser.refer (&mut _queue_size) .add_option (&["--workers-queue"], argparse::Parse, "hashing workers queue size (1024 times workers count by default)");
-		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "OS process scheduling priority (i.e. `nice`) (19 by default)");
+		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "set OS process scheduling priority (i.e. `nice`) (19 by default)");
+		_parser.refer (&mut _io_fadvise) .add_option (&["--fadvise"], argparse::StoreTrue, "use OS `fadvise` with sequential and no-reuse (false by default)");
 		_parser.refer (&mut _ignore_all_errors)
 				.add_option (&["--ignore-all-errors"], argparse::StoreTrue, "ignore all errors (false by default)");
 		_parser.refer (&mut _ignore_walk_errors)
@@ -149,6 +151,24 @@ pub fn main () -> (Result<(), io::Error>) {
 						},
 					};
 					
+					if _io_fadvise {
+						let mut _failed = false;
+						unsafe {
+							if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_SEQUENTIAL) != 0 {
+								_failed = true;
+							}
+							if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_NOREUSE) != 0 {
+								_failed = true;
+							}
+							if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_WILLNEED) != 0 {
+								_failed = true;
+							}
+						}
+						if _failed {
+							eprintln! ("[ww] [76280772]  `fadvise` failed!")
+						}
+					}
+					
 					_hash_buffer.clear ();
 					match digest (_hashes_algorithm, &mut _file, &mut _hash_buffer) {
 						Ok (()) => {
@@ -173,6 +193,17 @@ pub fn main () -> (Result<(), io::Error>) {
 						},
 					}
 					
+					if _io_fadvise {
+						let mut _failed = false;
+						unsafe {
+							if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_DONTNEED) != 0 {
+								_failed = true;
+							}
+						}
+						if _failed {
+							eprintln! ("[ww] [def753c5]  `fadvise` failed!")
+						}
+					}
 				}
 				
 				drop (_done);

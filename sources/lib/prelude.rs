@@ -47,4 +47,5 @@ pub(crate) use ::std::iter::IntoIterator as _;
 pub(crate) use ::std::iter::Iterator as _;
 pub(crate) use ::std::os::unix::ffi::OsStrExt as _;
 pub(crate) use ::std::os::unix::fs::OpenOptionsExt as _;
+pub(crate) use ::std::os::unix::io::AsRawFd as _;
 
