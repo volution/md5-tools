@@ -13,14 +13,15 @@ profile = ["cpuprofiler"]
 
 [dependencies]
 libc = "*"
-cpio = "*"
 digest = "*"
 md-5 = "*"
 sha-1 = "*"
 sha2 = "*"
 sha3 = "*"
-regex = "*"
 walkdir = "*"
+crossbeam = "*"
+regex = "*"
+cpio = "*"
 cpuprofiler = { version = "*", optional = true }
 
 [[bin]]
