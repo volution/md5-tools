@@ -1,15 +1,27 @@
 
-# **md5-tools** -- lightweight Rust-based MD5/SHA-family related tools
+# **md5-tools** -- lightweight Rust MD5/SHA tools
+
+
+> Table of contents:
+> * [Features](#features): [`md5-create`](#md5-create-features)
+> * [Usage examples](#usage-examples): [`md5-create`](#md5-create-usage), [`md5-diff`](#md5-diff-usage), [`md5-cpio`](#md5-cpio-usage)
+> * [Installing](#installing)
+> * [About](#about) and [Copyright and licensing](#notice-copyright-and-licensing)
 
 
 
 
 ## About
 
-This is a small collection of lightweight Rust-based tools related to MD5 and the SHA family fingerprint files:
-* `md5-diff` -- takes two MD5/SHA files (as produced by `md5sum`/`sha1sum`/`shaXsum` or compliant tools) and prints a report of differences between them;
-* `md5-cpio` -- reads from `stdin` a CPIO archive (in `newc` format, as created with `cpio -o -H newc`) and generates to `stdout` an MD5/SHA fingerprints file of all the archive's members (that are files);
-* `md5-create` (for now a Bash script, supporting only MD5) -- takes one argument (a folder) and creates within it (or if exists the `.md5` folder exists underneath it) a timestamped MD5 fingerprints file of all the folder's members (that are files);  (it ignores symlinks or sub-mount-points;  it also ignores folders that have a `.md5.excluded` file within it;)
+This is a small collection of lightweight Rust-based tools related to the MD5 and SHA family hash files:
+* `md5-create` -- takes one argument (a folder or file) and generates to `stdout` an MD5/SHA hash file of all its children (that are files);
+  (see [bellow some of its features](#md5-create-features) that set it appart from `md5deep` or similar tools;)
+  (see [below for usage examples](#md5-create-usage);)
+* `md5-diff` -- takes two MD5/SHA hash files and prints a report of differences between them;
+  (see [below for usage examples](#md5-diff-usage);)
+* `md5-cpio` -- reads from `stdin` a CPIO archive (in `newc` format, as created with `cpio -o -H newc`) and generates to `stdout` an MD5/SHA hash file of all the archive's members (that are files);
+  (see [below for usage examples](#md5-cpio-usage);)
+* all these tools consume or generate files similar to those produced by `md5sum`/`sha1sum`/`sha256sum`;
 
 I have used all of these to curate my personal file-systems and backups, and they can handle large amounts of data.
 (For example `md5-diff` was used on a ~3 million lines long MD5 file.)
@@ -18,22 +30,74 @@ Regarding the insecurity of MD5:
 * **although the tools are named `md5-*`, they do support the SHA family of hashes!**
 * yes, I know that MD5 is cryptographically broken;
 * yes, I know we should migrate to SHA-2 / SHA-3 family of hash functions;
-* **but for the purpose of identifying duplicate, missing, or corrupted files I personally think it is still acceptable;**
+* but for the purpose of identifying duplicate, missing, or corrupted files I personally think it is still acceptable;
+
+There are also a few other tools and scripts found in `./sources/bin`:
+* `md5-create.bash` (for now a Bash script, supporting only MD5) -- takes one argument (a folder) and creates within it (or if exists the `.md5` folder exists underneath it) a timestamped MD5 hash file of all the folder's members (that are files);  (it ignores symlinks or sub-mount-points;  it also ignores folders that have a `.md5.excluded` file within it;)
+* `md5-diff.go` -- the Go variant of the `md5-diff` tool;
+
+
+
+
+## Features
+
+
+### `md5-create` features
+
+The following is a short list of the most important features that set this tool apart from other similar tools like `md5deep`:
+* support for the [`posix_fadvise`](http://man7.org/linux/man-pages/man2/posix_fadvise.2.html) syscall that instructs the OS not to cache the hashed files in its buffers, thus reducing the OS memory pressure;
+* support for the [`nice`](http://man7.org/linux/man-pages/man2/nice.2.html) syscall, that sets the OS scheduler priority (by default 19, the lowest value), thus reducing the OS CPU pressure;
+* support for not crossing to other mount-points (i.e. like `find /path/... -xdev`);
+* (not yet implemented) support for clustering files to be hashed by their inode-number, which usually reduces the I/O thrashing on magnetic disks;
+* (not yet implemented) support for printing relative paths, relative to the root given as argument;  (this option is also supported by `md5deep`;)
+* (not yet implemented) support for hashing symlinks as either their path contents, or the pointed-to file contents;
 
 
 
 
 ## Usage examples
 
+
+### `md5-create` usage
+
+Besides the example bellow it also supports the following features:
+* `--help` -- the obvious "display help" flag;
+* `--md5`, `--sha1`, `--sha224`, `--sha256`, `--sha384`, `--sha512`, `--sha3-224`, `--sha3-256`, `--sha3-384`, `--sha3-512` -- to handle files that contain hashes for these algorithms;
+* `--zero` -- to handle files where lines are terminated by `\0` (as opposed by `\n`);
+* `--xdev` -- when walking the file-system, do not cross into other mount points;
+* `--follow` -- when walking the file-system, do follow any symlinks;  (without this option not even symlinks to files are hashed;)
+* `--ignore-all-errors`, `--ignore-walk-errors`, `--ignore-open-errors`, `--ignore-read-errors` -- by default, if any errors are encountered while walking folders, opening or reading files, the hashing stops with an error;  with these options the hashing continues, but the final exit code is still non-zero;
+* `--no-errors-to-stdout`, and its default `--errors-to-stdout` -- write an invalid hash record for any failed folder or file;  (i.e. an all `0000...` hash;)
+* `--no-errors-to-stderr`, and its default `--errors-to-stderr` -- write an error message to `stderr` if any errors are encountered;
+* `--nice <priority>` -- set the `nice` priority;  (i.e. `19` by default, the lowest priority;)
+* `--fadvise` -- tell the OS that the files are read sequentially, and that their contents shouldn't be cached in the OS buffers;
+* `--workers-count` -- number of parallel threads that compute hashes;
+* `--workers-queue` -- size of the parallel threads queue;  (one should not touch this!)
+* `--` -- denotes the end of flags, and the start of the folder or file to hash;
+
+````
+md5-create ./sources
+````
+````
+b687bba629fdef9f29ba734f9aac90e0 *./sources/md5-diff.go
+855190c3b695519378b057c1f48efdf7 *./sources/md5-cpio.rs
+8ecc4a7b226f0c499eed4852d43003e4 *./sources/md5-create.bash
+12626fb2d7784b35dfd6196fc703cf59 *./sources/md5-diff.rs
+````
+
+
+
+
 ### `md5-diff` usage
 
 Besides the example bellow it also supports the following features:
+* `--help` -- the obvious "display help" flag;
+* `--md5`, `--sha1`, `--sha224`, `--sha256`, `--sha384`, `--sha512`, `--sha3-224`, `--sha3-256`, `--sha3-384`, `--sha3-512` -- to handle files that contain hashes for these algorithms;
+* `--gzip`, `--bzip2`, `--lzip`, `--xz`, `--lzma`, `--lz4`, `--lzo`, `--zstd` -- to handle files that are compressed;  (requires those decompressors to be installed);
 * `--zero` -- to handle files where lines are terminated by `\0` (as opposed by `\n`);
-* `--gzip`, `--bzip2`, `--lzip`, `--xz`, `--lzma`, `--lz4`, `--lzo`, `zstd` -- to handle files that are compressed;  (requires those decompressors to be installed);
-* `--md5`, `--sha1`, `--sha224`, `--sha256`, `--sha384`, `--sha512`, `--sha3-224`, `--sha3-256`, `--sha3-384`, `--sha3-512` -- to handle files that contain fingerprints for these algorithms;
 * `--` -- denotes the end of flags, and the start of the two files to compare;
 
-Please note that an all zero hash (i.e. `0000....`) of the proper length is considered an "invalid file";  the normal hashing tools don't generate these hashes, but `md5-cpio` does for hard-links.
+Please note that an all zero hash (i.e. `0000....`) of the proper length is considered an "invalid file";  the normal hashing tools don't generate these hashes, but `md5-create` does it for files or folders that fail to be open or read (either due to permission or I/O errors), also `md5-cpio` does for hard-links.
 Also empty files are detected by the hash of an empty string (i.e. for MD5 an empty file has the hash `d41d8cd98f00b204e9800998ecf8427e`).
 
 ````
@@ -120,8 +184,9 @@ md5-diff ./old.md5 ./new.md5
 ### `md5-cpio` usage
 
 Besides the example bellow it also supports the following features:
+* `--help` -- the obvious "display help" flag;
+* `--md5`, `--sha1`, `--sha224`, `--sha256`, `--sha384`, `--sha512`, `--sha3-224`, `--sha3-256`, `--sha3-384`, `--sha3-512` -- to generate hashes for one of these algorithms;
 * `--zero` -- to generate lines that are terminated by `\0` (as opposed by `\n`);
-* `--md5`, `--sha1`, `--sha224`, `--sha256`, `--sha384`, `--sha512`, `--sha3-224`, `--sha3-256`, `--sha3-384`, `--sha3-512` -- to generate fingerprints for one of these algorithms;
 
 ````
 find ./sources -depth -print | cpio -o -H newc | gzip > ./archive.cpio.gz
@@ -149,7 +214,7 @@ b687bba629fdef9f29ba734f9aac90e0 *./sources/md5-diff.go
 ````
 
 
-### `md5-create` usage
+### `md5-create.bash` usage
 
 ````
 md5-create ./sources
@@ -168,7 +233,10 @@ b687bba629fdef9f29ba734f9aac90e0 *./md5-diff.go
 
 
 
-## Installing from sources
+## Installing
+
+
+### Installing from sources
 
 ````
 git clone https://github.com/cipriancraciun/md5-tools
@@ -183,9 +251,9 @@ cargo build --release
 ````
 
 ````
+cp ./target/release/md5-create ~/bin/md5-create
 cp ./target/release/md5-diff ~/bin/md5-diff
 cp ./target/release/md5-cpio ~/bin/md5-cpio
-cp ./sources/md5-create.bash ~/bin/md5-create
 ````
 
 
