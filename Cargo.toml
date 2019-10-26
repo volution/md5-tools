@@ -22,6 +22,7 @@ walkdir = "*"
 crossbeam = "*"
 regex = "*"
 cpio = "*"
+argparse = "*"
 cpuprofiler = { version = "*", optional = true }
 
 [[bin]]
