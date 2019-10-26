@@ -11,12 +11,15 @@ pub(crate) use ::std::io;
 pub(crate) use ::std::path;
 pub(crate) use ::std::process;
 pub(crate) use ::std::str;
+pub(crate) use ::std::sync;
+pub(crate) use ::std::thread;
 
 
 pub(crate) use ::std::option::{Option::Some, Option::None};
 pub(crate) use ::std::result::{Result, Result::Ok, Result::Err};
 
 
+pub(crate) use ::std::mem::drop;
 pub(crate) use ::std::borrow::Cow;
 pub(crate) use ::std::rc::Rc;
 pub(crate) use ::std::vec::Vec;

@@ -76,16 +76,17 @@ pub fn main () -> (Result<(), io::Error>) {
 	};
 	
 	
+	let mut _input = io::stdin ();
+	let mut _input = _input.lock ();
+	
 	let mut _output = io::stdout ();
 	let mut _output = _output.lock ();
 	
 	let mut _sink = StandardHashesSink::new (&mut _output, _zero);
+	
 	let mut _hash_buffer = Vec::with_capacity (128);
 	let mut _path_buffer = Vec::with_capacity (4 * 1024);
 	
-	
-	let mut _input = io::stdin ();
-	let mut _input = _input.lock ();
 	
 	loop {
 		
