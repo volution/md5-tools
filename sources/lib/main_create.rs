@@ -29,13 +29,17 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	let mut _threads_count = 0 as usize;
 	let mut _queue_size = 0 as usize;
-	let mut _nice_level = 0 as i8;
+	let mut _nice_level = 19 as i8;
+	let mut _walk_xdev = false;
+	let mut _walk_follow = false;
 	
 	
 	{
 		let mut _parser = argparse::ArgumentParser::new ();
 		_hashes_flags.argparse (&mut _parser);
 		_format_flags.argparse (&mut _parser);
+		_parser.refer (&mut _walk_xdev) .add_option (&["-x", "--xdev"], argparse::StoreTrue, "do not cross mount points");
+		_parser.refer (&mut _walk_follow) .add_option (&["-L", "--follow"], argparse::StoreTrue, "follow symlinks (n.b. arguments are followed)");
 		_parser.refer (&mut _threads_count) .add_option (&["-w", "--workers-count"], argparse::Parse, "hashing workers count (16 by default)");
 		_parser.refer (&mut _queue_size) .add_option (&["--workers-queue"], argparse::Parse, "hashing workers queue size (1024 times workers count by default)");
 		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "OS process scheduling priority (i.e. `nice`) (19 by default)");
@@ -49,9 +53,6 @@ pub fn main () -> (Result<(), io::Error>) {
 	}
 	if _queue_size == 0 {
 		_queue_size = _threads_count * 1024;
-	}
-	if _nice_level == 0 {
-		_nice_level = 19;
 	}
 	
 	
@@ -70,8 +71,8 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	
 	let mut _walker = walkdir::WalkDir::new (&_path)
-			.follow_links (false)
-			.same_file_system (false)
+			.same_file_system (_walk_xdev)
+			.follow_links (_walk_follow)
 			.contents_first (true)
 			.into_iter ();
 	

@@ -24,7 +24,7 @@ pub fn main () -> (Result<(), io::Error>) {
 			zero : false,
 		};
 	
-	let mut _nice_level = 0 as i8;
+	let mut _nice_level = 19 as i8;
 	
 	
 	{
@@ -33,11 +33,6 @@ pub fn main () -> (Result<(), io::Error>) {
 		_format_flags.argparse (&mut _parser);
 		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "OS process scheduling priority (i.e. `nice`) (19 by default)");
 		_parser.parse_args_or_exit ();
-	}
-	
-	
-	if _nice_level == 0 {
-		_nice_level = 19;
 	}
 	
 	
