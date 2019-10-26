@@ -4,6 +4,7 @@ use ::cpio::newc as cpio;
 use ::libc;
 
 use crate::digests::*;
+use crate::flags::*;
 use crate::hashes::*;
 use crate::prelude::*;
 use crate::sinks::*;
@@ -13,11 +14,15 @@ use crate::sinks::*;
 
 pub fn main () -> (Result<(), io::Error>) {
 	
-	let (_hash, _zero) = {
-		
-		let mut _hash = &MD5;
-		let mut _zero = false;
-		
+	let mut _hashes_flags = HashesFlags {
+			algorithm : &MD5,
+		};
+	
+	let mut _format_flags = HashesFormatFlags {
+			zero : false,
+		};
+	
+	{
 		let _arguments = env::args_os ();
 		let mut _arguments = _arguments.into_iter () .peekable ();
 		
@@ -33,28 +38,28 @@ pub fn main () -> (Result<(), io::Error>) {
 						},
 						
 						b"--md5" =>
-							_hash = &MD5,
+							_hashes_flags.algorithm = &MD5,
 						b"--sha1" =>
-							_hash = &SHA1,
+							_hashes_flags.algorithm = &SHA1,
 						b"--sha224" | b"--sha2-224" =>
-							_hash = &SHA2_224,
+							_hashes_flags.algorithm = &SHA2_224,
 						b"--sha256" | b"--sha2-256" =>
-							_hash = &SHA2_256,
+							_hashes_flags.algorithm = &SHA2_256,
 						b"--sha384" | b"--sha2-384" =>
-							_hash = &SHA2_384,
+							_hashes_flags.algorithm = &SHA2_384,
 						b"--sha512" | b"--sha2-512" =>
-							_hash = &SHA2_512,
+							_hashes_flags.algorithm = &SHA2_512,
 						b"--sha3-224" =>
-							_hash = &SHA3_224,
+							_hashes_flags.algorithm = &SHA3_224,
 						b"--sha3-256" =>
-							_hash = &SHA3_256,
+							_hashes_flags.algorithm = &SHA3_256,
 						b"--sha3-384" =>
-							_hash = &SHA3_384,
+							_hashes_flags.algorithm = &SHA3_384,
 						b"--sha3-512" =>
-							_hash = &SHA3_512,
+							_hashes_flags.algorithm = &SHA3_512,
 						
 						b"--zero" =>
-							_zero = true,
+							_format_flags.zero = true,
 						
 						b"" =>
 							return Err (io::Error::new (io::ErrorKind::Other, "[c80572b3]  unexpected empty argument")),
@@ -62,6 +67,7 @@ pub fn main () -> (Result<(), io::Error>) {
 							return Err (io::Error::new (io::ErrorKind::Other, "[63a73c9c]  unexpected flag")),
 						_ =>
 							break,
+						
 					},
 				None =>
 					break,
@@ -71,9 +77,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		if _arguments.len () != 0 {
 			return Err (io::Error::new (io::ErrorKind::Other, "[f084735b]  unexpected arguments"));
 		}
-		
-		(_hash, _zero)
-	};
+	}
 	
 	
 	let mut _input = io::stdin ();
@@ -82,7 +86,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	let mut _output = io::stdout ();
 	let mut _output = _output.lock ();
 	
-	let mut _sink = StandardHashesSink::new (&mut _output, _zero);
+	let mut _sink = StandardHashesSink::new (&mut _output, _format_flags.zero);
 	
 	let mut _hash_buffer = Vec::with_capacity (128);
 	let mut _path_buffer = Vec::with_capacity (4 * 1024);
@@ -102,14 +106,14 @@ pub fn main () -> (Result<(), io::Error>) {
 			let _hash = if (_metadata.file_size () > 0) || (_metadata.nlink () <= 1) {
 				
 				_hash_buffer.clear ();
-				digest (_hash, &mut _record, &mut _hash_buffer) ?;
+				digest (_hashes_flags.algorithm, &mut _record, &mut _hash_buffer) ?;
 				
 			} else {
 				
 				eprintln! ("[ww] [7c9f8eb7]  hard-link detected: `{}`;  ignoring!", _metadata.name ());
 				
 				_hash_buffer.clear ();
-				_hash_buffer.extend_from_slice (_hash.invalid_raw);
+				_hash_buffer.extend_from_slice (_hashes_flags.algorithm.invalid_raw);
 			};
 			
 			let _metadata = _record.entry ();

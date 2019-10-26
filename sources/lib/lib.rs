@@ -5,6 +5,7 @@
 
 pub mod core;
 pub mod digests;
+pub mod flags;
 pub mod hashes;
 pub mod sinks;
 

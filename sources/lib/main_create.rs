@@ -4,6 +4,7 @@ use ::crossbeam;
 use ::walkdir;
 
 use crate::digests::*;
+use crate::flags::*;
 use crate::hashes::*;
 use crate::prelude::*;
 use crate::sinks::*;
@@ -14,15 +15,21 @@ use crate::sinks::*;
 pub fn main () -> (Result<(), io::Error>) {
 	
 	
+	let mut _hashes_flags = HashesFlags {
+			algorithm : &MD5,
+		};
+	
+	let mut _format_flags = HashesFormatFlags {
+			zero : false,
+		};
+	
+	let mut _path = ffi::OsString::from (".");
+	
 	let _threads_count = 16;
 	let _queue_size = _threads_count * 1024;
 	
 	
-	let (_path, _hash, _zero) = {
-		
-		let mut _hash = &MD5;
-		let mut _zero = false;
-		
+	{
 		let _arguments = env::args_os ();
 		let mut _arguments = _arguments.into_iter () .peekable ();
 		
@@ -38,28 +45,28 @@ pub fn main () -> (Result<(), io::Error>) {
 						},
 						
 						b"--md5" =>
-							_hash = &MD5,
+							_hashes_flags.algorithm = &MD5,
 						b"--sha1" =>
-							_hash = &SHA1,
+							_hashes_flags.algorithm = &SHA1,
 						b"--sha224" | b"--sha2-224" =>
-							_hash = &SHA2_224,
+							_hashes_flags.algorithm = &SHA2_224,
 						b"--sha256" | b"--sha2-256" =>
-							_hash = &SHA2_256,
+							_hashes_flags.algorithm = &SHA2_256,
 						b"--sha384" | b"--sha2-384" =>
-							_hash = &SHA2_384,
+							_hashes_flags.algorithm = &SHA2_384,
 						b"--sha512" | b"--sha2-512" =>
-							_hash = &SHA2_512,
+							_hashes_flags.algorithm = &SHA2_512,
 						b"--sha3-224" =>
-							_hash = &SHA3_224,
+							_hashes_flags.algorithm = &SHA3_224,
 						b"--sha3-256" =>
-							_hash = &SHA3_256,
+							_hashes_flags.algorithm = &SHA3_256,
 						b"--sha3-384" =>
-							_hash = &SHA3_384,
+							_hashes_flags.algorithm = &SHA3_384,
 						b"--sha3-512" =>
-							_hash = &SHA3_512,
+							_hashes_flags.algorithm = &SHA3_512,
 						
 						b"--zero" =>
-							_zero = true,
+							_format_flags.zero = true,
 						
 						b"" =>
 							return Err (io::Error::new (io::ErrorKind::Other, "[82eb61b2]  unexpected empty argument")),
@@ -77,15 +84,13 @@ pub fn main () -> (Result<(), io::Error>) {
 			return Err (io::Error::new (io::ErrorKind::Other, "[92cf6a8d]  unexpected arguments"));
 		}
 		
-		let _path = _arguments.next () .unwrap ();
-		
-		(_path, _hash, _zero)
-	};
+		_path = _arguments.next () .unwrap ();
+	}
 	
 	
 	let _output = fs::OpenOptions::new () .write (true) .open ("/dev/stdout") ?;
 	
-	let _sink = StandardHashesSink::new (_output, _zero);
+	let _sink = StandardHashesSink::new (_output, _format_flags.zero);
 	let _sink = sync::Arc::new (sync::Mutex::new (_sink));
 	
 	
@@ -107,6 +112,8 @@ pub fn main () -> (Result<(), io::Error>) {
 		let _dequeue = _dequeue.clone ();
 		let _done = _done.clone ();
 		
+		let _hashes_algorithm = _hashes_flags.algorithm;
+		
 		let _completion = thread::spawn (move || -> Result<(), io::Error> {
 				
 				let mut _hash_buffer = Vec::with_capacity (128);
@@ -123,7 +130,7 @@ pub fn main () -> (Result<(), io::Error>) {
 					let mut _file = fs::File::open (_entry.path ()) ?;
 					
 					_hash_buffer.clear ();
-					digest (_hash, &mut _file, &mut _hash_buffer) ?;
+					digest (_hashes_algorithm, &mut _file, &mut _hash_buffer) ?;
 					
 					let mut _sink = _sink.lock () .unwrap ();
 					_sink.handle (_entry.path () .as_os_str (), &_hash_buffer) ?;

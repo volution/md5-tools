@@ -3,6 +3,7 @@
 use ::regex;
 
 use crate::core::*;
+use crate::flags::*;
 use crate::hashes::*;
 use crate::prelude::*;
 
@@ -85,32 +86,29 @@ type PathKey = usize;
 type TokenOrder = usize;
 
 
-#[ derive (Copy, Clone, PartialEq) ]
-enum Decompressor {
-	None,
-	Gzip,  // https://www.gzip.org/
-	Bzip2, // http://sourceware.org/bzip2/
-	Lzip,  // https://www.nongnu.org/lzip/
-	Xz,    // https://tukaani.org/xz/
-	Lzma,  // https://www.7-zip.org/sdk.html
-	Lz4,   // https://lz4.github.io/lz4/
-	Lzo,   // http://www.lzop.org/
-	Zstd,  // https://github.com/facebook/zstd
-}
-
-
 
 
 pub fn main () -> (Result<(), io::Error>) {
 	
+	
+	let mut _hashes_flags = HashesFlags {
+			algorithm : &MD5,
+		};
+	
+	let mut _format_flags = HashesFormatFlags {
+			zero : false,
+		};
+	
+	let mut _compression_flags = CompressionFlags {
+			algorithm : CompressionAlgorithm::None,
+		};
+	
+	
 	#[ cfg (feature = "profile") ]
 	profiler.lock () .unwrap () .start ("./target/md5-diff.profile") .unwrap ();
 	
-	let (_path_left, _path_right, _hash, _record_zero, _decompressor) = {
-		
-		let mut _hash = &MD5;
-		let mut _zero = false;
-		let mut _decompressor = Decompressor::None;
+	
+	let (_path_left, _path_right) = {
 		
 		let _arguments = env::args_os ();
 		let mut _arguments = _arguments.into_iter () .peekable ();
@@ -127,45 +125,45 @@ pub fn main () -> (Result<(), io::Error>) {
 						},
 						
 						b"--md5" =>
-							_hash = &MD5,
+							_hashes_flags.algorithm = &MD5,
 						b"--sha1" =>
-							_hash = &SHA1,
+							_hashes_flags.algorithm = &SHA1,
 						b"--sha224" | b"--sha2-224" =>
-							_hash = &SHA2_224,
+							_hashes_flags.algorithm = &SHA2_224,
 						b"--sha256" | b"--sha2-256" =>
-							_hash = &SHA2_256,
+							_hashes_flags.algorithm = &SHA2_256,
 						b"--sha384" | b"--sha2-384" =>
-							_hash = &SHA2_384,
+							_hashes_flags.algorithm = &SHA2_384,
 						b"--sha512" | b"--sha2-512" =>
-							_hash = &SHA2_512,
+							_hashes_flags.algorithm = &SHA2_512,
 						b"--sha3-224" =>
-							_hash = &SHA3_224,
+							_hashes_flags.algorithm = &SHA3_224,
 						b"--sha3-256" =>
-							_hash = &SHA3_256,
+							_hashes_flags.algorithm = &SHA3_256,
 						b"--sha3-384" =>
-							_hash = &SHA3_384,
+							_hashes_flags.algorithm = &SHA3_384,
 						b"--sha3-512" =>
-							_hash = &SHA3_512,
+							_hashes_flags.algorithm = &SHA3_512,
 						
 						b"--zero" =>
-							_zero = true,
+							_format_flags.zero = true,
 						
 						b"--gzip" =>
-							_decompressor = Decompressor::Gzip,
+							_compression_flags.algorithm = CompressionAlgorithm::Gzip,
 						b"--bzip2" =>
-							_decompressor = Decompressor::Bzip2,
+							_compression_flags.algorithm = CompressionAlgorithm::Bzip2,
 						b"--lzip" =>
-							_decompressor = Decompressor::Lzip,
+							_compression_flags.algorithm = CompressionAlgorithm::Lzip,
 						b"--xz" =>
-							_decompressor = Decompressor::Xz,
+							_compression_flags.algorithm = CompressionAlgorithm::Xz,
 						b"--lzma" =>
-							_decompressor = Decompressor::Lzma,
+							_compression_flags.algorithm = CompressionAlgorithm::Lzma,
 						b"--lz4" =>
-							_decompressor = Decompressor::Lz4,
+							_compression_flags.algorithm = CompressionAlgorithm::Lz4,
 						b"--lzo" =>
-							_decompressor = Decompressor::Lzo,
+							_compression_flags.algorithm = CompressionAlgorithm::Lzo,
 						b"--zstd" =>
-							_decompressor = Decompressor::Zstd,
+							_compression_flags.algorithm = CompressionAlgorithm::Zstd,
 						
 						b"" =>
 							return Err (io::Error::new (io::ErrorKind::Other, "[874af75c]  unexpected empty argument")),
@@ -186,14 +184,14 @@ pub fn main () -> (Result<(), io::Error>) {
 		let _path_left = _arguments.next () .unwrap ();
 		let _path_right = _arguments.next () .unwrap ();
 		
-		(_path_left, _path_right, _hash, _zero, _decompressor)
+		(_path_left, _path_right)
 	};
 	
 	if verbose { eprintln! ("[ii] [42c3ae70]  loading..."); }
-	let mut _tokens = Tokens::new (_hash.empty, _hash.invalid);
-	let _record_pattern = regex::bytes::Regex::new (_hash.pattern) .unwrap ();
-	let _source_left = load (_path_left.as_ref (), &mut _tokens, &_record_pattern, _record_zero, _decompressor) ?;
-	let _source_right = load (_path_right.as_ref (), &mut _tokens, &_record_pattern, _record_zero, _decompressor) ?;
+	let mut _tokens = Tokens::new (_hashes_flags.algorithm.empty, _hashes_flags.algorithm.invalid);
+	let _record_pattern = regex::bytes::Regex::new (_hashes_flags.algorithm.pattern) .unwrap ();
+	let _source_left = load (_path_left.as_ref (), &mut _tokens, &_record_pattern, _format_flags.zero, _compression_flags.algorithm) ?;
+	let _source_right = load (_path_right.as_ref (), &mut _tokens, &_record_pattern, _format_flags.zero, _compression_flags.algorithm) ?;
 	_tokens.sort ();
 	
 	if verbose { eprintln! ("[ii] [42c3ae70]  indexing..."); }
@@ -353,54 +351,54 @@ fn report_diff_entries (_tag_left : char, _tag_right : char, _diff : & Diff, _to
 
 
 
-fn load (_path : & path::Path, _tokens : &mut Tokens, _pattern : & regex::bytes::Regex, _zero : bool, _decompressor : Decompressor) -> (Result<Source, io::Error>) {
+fn load (_path : & path::Path, _tokens : &mut Tokens, _pattern : & regex::bytes::Regex, _zero : bool, _decompressor : CompressionAlgorithm) -> (Result<Source, io::Error>) {
 	
 	let mut _file = fs::File::open (_path) ?;
 	
-	if _decompressor != Decompressor::None {
+	if _decompressor != CompressionAlgorithm::None {
 		
 		let mut _filter = match _decompressor {
-			Decompressor::Gzip => {
+			CompressionAlgorithm::Gzip => {
 				let mut _filter = process::Command::new ("gzip");
 				_filter.arg ("-d");
 				_filter
 			},
-			Decompressor::Bzip2 => {
+			CompressionAlgorithm::Bzip2 => {
 				let mut _filter = process::Command::new ("bzip2");
 				_filter.arg ("-d");
 				_filter
 			},
-			Decompressor::Lzip => {
+			CompressionAlgorithm::Lzip => {
 				let mut _filter = process::Command::new ("lzip");
 				_filter.arg ("-d");
 				_filter
 			},
-			Decompressor::Xz => {
+			CompressionAlgorithm::Xz => {
 				let mut _filter = process::Command::new ("xz");
 				_filter.arg ("-d");
 				_filter
 			},
-			Decompressor::Lzma => {
+			CompressionAlgorithm::Lzma => {
 				let mut _filter = process::Command::new ("lzma");
 				_filter.arg ("-d");
 				_filter
 			},
-			Decompressor::Lz4 => {
+			CompressionAlgorithm::Lz4 => {
 				let mut _filter = process::Command::new ("lz4");
 				_filter.arg ("-d");
 				_filter
 			},
-			Decompressor::Lzo => {
+			CompressionAlgorithm::Lzo => {
 				let mut _filter = process::Command::new ("lzop");
 				_filter.arg ("-d");
 				_filter
 			},
-			Decompressor::Zstd => {
+			CompressionAlgorithm::Zstd => {
 				let mut _filter = process::Command::new ("zstd");
 				_filter.arg ("-d");
 				_filter
 			},
-			Decompressor::None =>
+			CompressionAlgorithm::None =>
 				unreachable! ("[9c7ca4b5]"),
 		};
 		_filter.stdin (process::Stdio::from (_file));
