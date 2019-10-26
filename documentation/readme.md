@@ -15,11 +15,11 @@
 
 This is a small collection of lightweight Rust-based tools related to the MD5 and SHA family hash files:
 * `md5-create` -- takes one argument (a folder or file) and generates to `stdout` an MD5/SHA hash file of all its children (that are files);
-  (see [bellow some of its features](#md5-create-features) that set it appart from `md5deep` or similar tools;)
+  (see [bellow some of its features](#md5-create-features) that set it apart from `md5deep` or similar tools;)
   (see [below for usage examples](#md5-create-usage);)
 * `md5-diff` -- takes two MD5/SHA hash files and prints a report of differences between them;
   (see [below for usage examples](#md5-diff-usage);)
-* `md5-cpio` -- reads from `stdin` a CPIO archive (in `newc` format, as created with `cpio -o -H newc`) and generates to `stdout` an MD5/SHA hash file of all the archive's members (that are files);
+* `md5-cpio` -- reads from `stdin` a CPIO archive (in `newc` format, as created with `cpio -o -H newc`) and generates to `stdout` an MD5/SHA hash file of all the archive members (that are files);
   (see [below for usage examples](#md5-cpio-usage);)
 * all these tools consume or generate files similar to those produced by `md5sum`/`sha1sum`/`sha256sum`;
 
@@ -33,7 +33,7 @@ Regarding the insecurity of MD5:
 * but for the purpose of identifying duplicate, missing, or corrupted files I personally think it is still acceptable;
 
 There are also a few other tools and scripts found in `./sources/bin`:
-* `md5-create.bash` (for now a Bash script, supporting only MD5) -- takes one argument (a folder) and creates within it (or if exists the `.md5` folder exists underneath it) a timestamped MD5 hash file of all the folder's members (that are files);  (it ignores symlinks or sub-mount-points;  it also ignores folders that have a `.md5.excluded` file within it;)
+* `md5-create.bash` (for now a Bash script, supporting only MD5) -- takes one argument (a folder) and creates within it (or if exists the `.md5` folder exists underneath it) a timestamped MD5 hash file of all the folder members (that are files);  (it ignores symlinks or sub-mount-points;  it also ignores folders that have a `.md5.excluded` file within it;)
 * `md5-diff.go` -- the Go variant of the `md5-diff` tool;
 
 
