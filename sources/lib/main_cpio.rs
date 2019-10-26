@@ -24,11 +24,28 @@ pub fn main () -> (Result<(), io::Error>) {
 			zero : false,
 		};
 	
+	let mut _nice_level = 0 as i8;
+	
+	
 	{
 		let mut _parser = argparse::ArgumentParser::new ();
 		_hashes_flags.argparse (&mut _parser);
 		_format_flags.argparse (&mut _parser);
+		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "OS process scheduling priority (i.e. `nice`) (19 by default)");
 		_parser.parse_args_or_exit ();
+	}
+	
+	
+	if _nice_level == 0 {
+		_nice_level = 19;
+	}
+	
+	
+	if _nice_level != 0 {
+		unsafe {
+			// FIXME:  Check the return value!
+			libc::nice (_nice_level as i32);
+		}
 	}
 	
 	

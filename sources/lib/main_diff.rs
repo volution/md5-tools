@@ -107,6 +107,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	let mut _path_left = path::PathBuf::from ("");
 	let mut _path_right = path::PathBuf::from ("");
 	
+	
 	{
 		let mut _parser = argparse::ArgumentParser::new ();
 		_hashes_flags.argparse (&mut _parser);

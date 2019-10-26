@@ -2,6 +2,7 @@
 
 use ::argparse;
 use ::crossbeam;
+use ::libc;
 use ::walkdir;
 
 use crate::digests::*;
@@ -26,16 +27,39 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	let mut _path = path::PathBuf::from ("");
 	
-	let _threads_count = 16;
-	let _queue_size = _threads_count * 1024;
+	let mut _threads_count = 0 as usize;
+	let mut _queue_size = 0 as usize;
+	let mut _nice_level = 0 as i8;
 	
 	
 	{
 		let mut _parser = argparse::ArgumentParser::new ();
 		_hashes_flags.argparse (&mut _parser);
 		_format_flags.argparse (&mut _parser);
+		_parser.refer (&mut _threads_count) .add_option (&["-w", "--workers-count"], argparse::Parse, "hashing workers count (16 by default)");
+		_parser.refer (&mut _queue_size) .add_option (&["--workers-queue"], argparse::Parse, "hashing workers queue size (1024 times workers count by default)");
+		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "OS process scheduling priority (i.e. `nice`) (19 by default)");
 		_parser.refer (&mut _path) .add_argument ("path", argparse::Parse, "starting file or folder") .required ();
 		_parser.parse_args_or_exit ();
+	}
+	
+	
+	if _threads_count == 0 {
+		_threads_count = 16;
+	}
+	if _queue_size == 0 {
+		_queue_size = _threads_count * 1024;
+	}
+	if _nice_level == 0 {
+		_nice_level = 19;
+	}
+	
+	
+	if _nice_level != 0 {
+		unsafe {
+			// FIXME:  Check the return value!
+			libc::nice (_nice_level as i32);
+		}
 	}
 	
 	
