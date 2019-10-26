@@ -1,4 +1,4 @@
 
-fn main () -> (Result<(), ::std::io::Error>) {
-	return ::md5_tools::main_cpio::main ();
+fn main () -> ! {
+	::md5_tools::main_cpio::main_0 ();
 }

@@ -8,6 +8,7 @@ use crate::prelude::*;
 
 pub trait HashesSink {
 	fn handle (&mut self, _path : & PathValueRef, _hash : & HashBytesRef) -> (Result<(), io::Error>);
+	fn flush (&mut self) -> (Result<(), io::Error>);
 }
 
 
@@ -52,6 +53,10 @@ impl <Stream : io::Write> HashesSink for StandardHashesSink<'_, Stream> {
 			self.stream.flush () ?;
 		}
 		return Ok (());
+	}
+	
+	fn flush (&mut self) -> (Result<(), io::Error>) {
+		return self.stream.flush ();
 	}
 }
 

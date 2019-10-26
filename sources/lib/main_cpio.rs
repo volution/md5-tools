@@ -102,3 +102,13 @@ pub fn main () -> (Result<(), io::Error>) {
 	return Ok (());
 }
 
+
+pub fn main_0 () -> ! {
+	if let Err (_error) = main () {
+		eprintln! ("[!!] {}", _error);
+		process::exit (1);
+	} else {
+		process::exit (0);
+	}
+}
+

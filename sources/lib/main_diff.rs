@@ -155,6 +155,16 @@ pub fn main () -> (Result<(), io::Error>) {
 }
 
 
+pub fn main_0 () -> ! {
+	if let Err (_error) = main () {
+		eprintln! ("[!!] {}", _error);
+		process::exit (1);
+	} else {
+		process::exit (0);
+	}
+}
+
+
 
 
 fn report_source_statistics (_tag : char, _source : & Source, _statistics : & SourceStatistics) -> () {

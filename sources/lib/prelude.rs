@@ -28,6 +28,7 @@ pub(crate) use ::std::collections::HashMap;
 
 
 pub(crate) use ::std::eprintln;
+pub(crate) use ::std::format;
 pub(crate) use ::std::panic;
 pub(crate) use ::std::println;
 pub(crate) use ::std::unreachable;
@@ -45,4 +46,5 @@ pub(crate) use ::std::iter::Extend as _;
 pub(crate) use ::std::iter::IntoIterator as _;
 pub(crate) use ::std::iter::Iterator as _;
 pub(crate) use ::std::os::unix::ffi::OsStrExt as _;
+pub(crate) use ::std::os::unix::fs::OpenOptionsExt as _;
 
