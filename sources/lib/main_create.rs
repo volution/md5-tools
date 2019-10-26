@@ -1,5 +1,6 @@
 
 
+use ::crossbeam;
 use ::walkdir;
 
 use crate::digests::*;
@@ -11,6 +12,11 @@ use crate::sinks::*;
 
 
 pub fn main () -> (Result<(), io::Error>) {
+	
+	
+	let _threads_count = 16;
+	let _queue_size = _threads_count * 1024;
+	
 	
 	let (_path, _hash, _zero) = {
 		
@@ -77,11 +83,10 @@ pub fn main () -> (Result<(), io::Error>) {
 	};
 	
 	
-	let mut _output = io::stdout ();
-	let mut _output = _output.lock ();
+	let _output = fs::OpenOptions::new () .write (true) .open ("/dev/stdout") ?;
 	
-	let mut _sink = StandardHashesSink::new (&mut _output, _zero);
-	let mut _hash_buffer = Vec::with_capacity (128);
+	let _sink = StandardHashesSink::new (_output, _zero);
+	let _sink = sync::Arc::new (sync::Mutex::new (_sink));
 	
 	
 	let mut _walker = walkdir::WalkDir::new (&_path)
@@ -89,6 +94,48 @@ pub fn main () -> (Result<(), io::Error>) {
 			.same_file_system (false)
 			.contents_first (true)
 			.into_iter ();
+	
+	
+	let (_enqueue, _dequeue) = crossbeam::channel::bounded::<walkdir::DirEntry> (_queue_size);
+	let mut _completions = Vec::with_capacity (_threads_count);
+	let _done = crossbeam::sync::WaitGroup::new ();
+	
+	
+	for _ in 0 .. _threads_count {
+		
+		let _sink = sync::Arc::clone (&_sink);
+		let _dequeue = _dequeue.clone ();
+		let _done = _done.clone ();
+		
+		let _completion = thread::spawn (move || -> Result<(), io::Error> {
+				
+				let mut _hash_buffer = Vec::with_capacity (128);
+				
+				loop {
+					
+					let _entry = match _dequeue.recv () {
+						Ok (_entry) =>
+							_entry,
+						Err (crossbeam::channel::RecvError) =>
+							break,
+					};
+					
+					let mut _file = fs::File::open (_entry.path ()) ?;
+					
+					_hash_buffer.clear ();
+					digest (_hash, &mut _file, &mut _hash_buffer) ?;
+					
+					let mut _sink = _sink.lock () .unwrap ();
+					_sink.handle (_entry.path () .as_os_str (), &_hash_buffer) ?;
+				}
+				
+				drop (_done);
+				
+				return Ok (());
+			});
+		
+		_completions.push (_completion);
+	}
 	
 	
 	loop {
@@ -102,13 +149,22 @@ pub fn main () -> (Result<(), io::Error>) {
 		let _metadata = _entry.metadata () ?;
 		
 		if _metadata.is_file () {
-			
-			let mut _file = fs::File::open (_entry.path ()) ?;
-			
-			_hash_buffer.clear ();
-			digest (_hash, &mut _file, &mut _hash_buffer) ?;
-			
-			_sink.handle (_entry.path () .as_os_str (), &_hash_buffer) ?;
+			_enqueue.send (_entry) .unwrap ();
+		}
+	}
+	
+	drop (_enqueue);
+	drop (_dequeue);
+	
+	
+	_done.wait ();
+	
+	for _completion in _completions.into_iter () {
+		match _completion.join () {
+			Ok (_outcome) =>
+				_outcome ?,
+			Err (_error) =>
+				panic! (_error),
 		}
 	}
 	
