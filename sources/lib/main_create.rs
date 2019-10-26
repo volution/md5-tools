@@ -1,5 +1,6 @@
 
 
+use ::argparse;
 use ::crossbeam;
 use ::walkdir;
 
@@ -23,68 +24,18 @@ pub fn main () -> (Result<(), io::Error>) {
 			zero : false,
 		};
 	
-	let mut _path = ffi::OsString::from (".");
+	let mut _path = path::PathBuf::from ("");
 	
 	let _threads_count = 16;
 	let _queue_size = _threads_count * 1024;
 	
 	
 	{
-		let _arguments = env::args_os ();
-		let mut _arguments = _arguments.into_iter () .peekable ();
-		
-		loop {
-			_arguments.next () .unwrap ();
-			match _arguments.peek () {
-				Some (_argument) =>
-					match _argument.as_bytes () {
-						
-						b"--" => {
-							_arguments.next () .unwrap ();
-							break;
-						},
-						
-						b"--md5" =>
-							_hashes_flags.algorithm = &MD5,
-						b"--sha1" =>
-							_hashes_flags.algorithm = &SHA1,
-						b"--sha224" | b"--sha2-224" =>
-							_hashes_flags.algorithm = &SHA2_224,
-						b"--sha256" | b"--sha2-256" =>
-							_hashes_flags.algorithm = &SHA2_256,
-						b"--sha384" | b"--sha2-384" =>
-							_hashes_flags.algorithm = &SHA2_384,
-						b"--sha512" | b"--sha2-512" =>
-							_hashes_flags.algorithm = &SHA2_512,
-						b"--sha3-224" =>
-							_hashes_flags.algorithm = &SHA3_224,
-						b"--sha3-256" =>
-							_hashes_flags.algorithm = &SHA3_256,
-						b"--sha3-384" =>
-							_hashes_flags.algorithm = &SHA3_384,
-						b"--sha3-512" =>
-							_hashes_flags.algorithm = &SHA3_512,
-						
-						b"--zero" =>
-							_format_flags.zero = true,
-						
-						b"" =>
-							return Err (io::Error::new (io::ErrorKind::Other, "[82eb61b2]  unexpected empty argument")),
-						_argument if _argument[0] == b'-' =>
-							return Err (io::Error::new (io::ErrorKind::Other, "[272d8b13]  unexpected flag")),
-						_ =>
-							break,
-					},
-				None =>
-					break,
-			}
-		}
-		
-		if _arguments.len () != 1 {
-			return Err (io::Error::new (io::ErrorKind::Other, "[92cf6a8d]  unexpected arguments"));
-		}
-		
-		_path = _arguments.next () .unwrap ();
+		let mut _parser = argparse::ArgumentParser::new ();
+		_hashes_flags.argparse (&mut _parser);
+		_format_flags.argparse (&mut _parser);
+		_parser.refer (&mut _path) .add_argument ("path", argparse::Parse, "starting file or folder") .required ();
+		_parser.parse_args_or_exit ();
 	}
 	
 	

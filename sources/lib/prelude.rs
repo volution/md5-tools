@@ -23,6 +23,7 @@ pub(crate) use ::std::mem::drop;
 pub(crate) use ::std::borrow::Cow;
 pub(crate) use ::std::rc::Rc;
 pub(crate) use ::std::vec::Vec;
+pub(crate) use ::std::string::String;
 pub(crate) use ::std::collections::HashMap;
 
 

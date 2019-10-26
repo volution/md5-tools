@@ -1,5 +1,6 @@
 
 
+use ::argparse;
 use ::regex;
 
 use crate::core::*;
@@ -103,89 +104,23 @@ pub fn main () -> (Result<(), io::Error>) {
 			algorithm : CompressionAlgorithm::None,
 		};
 	
+	let mut _path_left = path::PathBuf::from ("");
+	let mut _path_right = path::PathBuf::from ("");
+	
+	{
+		let mut _parser = argparse::ArgumentParser::new ();
+		_hashes_flags.argparse (&mut _parser);
+		_format_flags.argparse (&mut _parser);
+		_compression_flags.argparse (&mut _parser);
+		_parser.refer (&mut _path_left) .add_argument ("dataset-a", argparse::Parse, "source file for dataset A") .required ();
+		_parser.refer (&mut _path_right) .add_argument ("dataset-b", argparse::Parse, "source file for dataset B") .required ();
+		_parser.parse_args_or_exit ();
+	}
+	
 	
 	#[ cfg (feature = "profile") ]
 	profiler.lock () .unwrap () .start ("./target/md5-diff.profile") .unwrap ();
 	
-	
-	let (_path_left, _path_right) = {
-		
-		let _arguments = env::args_os ();
-		let mut _arguments = _arguments.into_iter () .peekable ();
-		
-		loop {
-			_arguments.next () .unwrap ();
-			match _arguments.peek () {
-				Some (_argument) =>
-					match _argument.as_bytes () {
-						
-						b"--" => {
-							_arguments.next () .unwrap ();
-							break;
-						},
-						
-						b"--md5" =>
-							_hashes_flags.algorithm = &MD5,
-						b"--sha1" =>
-							_hashes_flags.algorithm = &SHA1,
-						b"--sha224" | b"--sha2-224" =>
-							_hashes_flags.algorithm = &SHA2_224,
-						b"--sha256" | b"--sha2-256" =>
-							_hashes_flags.algorithm = &SHA2_256,
-						b"--sha384" | b"--sha2-384" =>
-							_hashes_flags.algorithm = &SHA2_384,
-						b"--sha512" | b"--sha2-512" =>
-							_hashes_flags.algorithm = &SHA2_512,
-						b"--sha3-224" =>
-							_hashes_flags.algorithm = &SHA3_224,
-						b"--sha3-256" =>
-							_hashes_flags.algorithm = &SHA3_256,
-						b"--sha3-384" =>
-							_hashes_flags.algorithm = &SHA3_384,
-						b"--sha3-512" =>
-							_hashes_flags.algorithm = &SHA3_512,
-						
-						b"--zero" =>
-							_format_flags.zero = true,
-						
-						b"--gzip" =>
-							_compression_flags.algorithm = CompressionAlgorithm::Gzip,
-						b"--bzip2" =>
-							_compression_flags.algorithm = CompressionAlgorithm::Bzip2,
-						b"--lzip" =>
-							_compression_flags.algorithm = CompressionAlgorithm::Lzip,
-						b"--xz" =>
-							_compression_flags.algorithm = CompressionAlgorithm::Xz,
-						b"--lzma" =>
-							_compression_flags.algorithm = CompressionAlgorithm::Lzma,
-						b"--lz4" =>
-							_compression_flags.algorithm = CompressionAlgorithm::Lz4,
-						b"--lzo" =>
-							_compression_flags.algorithm = CompressionAlgorithm::Lzo,
-						b"--zstd" =>
-							_compression_flags.algorithm = CompressionAlgorithm::Zstd,
-						
-						b"" =>
-							return Err (io::Error::new (io::ErrorKind::Other, "[874af75c]  unexpected empty argument")),
-						_argument if _argument[0] == b'-' =>
-							return Err (io::Error::new (io::ErrorKind::Other, "[874af75c]  unexpected flag")),
-						_ =>
-							break,
-					},
-				None =>
-					break,
-			}
-		}
-		
-		if _arguments.len () != 2 {
-			return Err (io::Error::new (io::ErrorKind::Other, "[6f5bd360]  unexpected arguments"));
-		}
-		
-		let _path_left = _arguments.next () .unwrap ();
-		let _path_right = _arguments.next () .unwrap ();
-		
-		(_path_left, _path_right)
-	};
 	
 	if verbose { eprintln! ("[ii] [42c3ae70]  loading..."); }
 	let mut _tokens = Tokens::new (_hashes_flags.algorithm.empty, _hashes_flags.algorithm.invalid);
@@ -209,8 +144,10 @@ pub fn main () -> (Result<(), io::Error>) {
 	if verbose { eprintln! ("[ii] [eedb34f8]  reporting details..."); }
 	report_diff_entries ('A', 'B', &_diff, &_tokens);
 	
+	
 	#[ cfg (feature = "profile") ]
 	profiler.lock () .unwrap () .stop () .unwrap ();
+	
 	
 	// NOTE:  We explicitly exit, so that destructors are not called...
 	process::exit (0);

@@ -1,6 +1,7 @@
 
 
-use ::cpio::newc as cpio;
+use ::argparse;
+use ::cpio;
 use ::libc;
 
 use crate::digests::*;
@@ -14,6 +15,7 @@ use crate::sinks::*;
 
 pub fn main () -> (Result<(), io::Error>) {
 	
+	
 	let mut _hashes_flags = HashesFlags {
 			algorithm : &MD5,
 		};
@@ -23,60 +25,10 @@ pub fn main () -> (Result<(), io::Error>) {
 		};
 	
 	{
-		let _arguments = env::args_os ();
-		let mut _arguments = _arguments.into_iter () .peekable ();
-		
-		loop {
-			_arguments.next () .unwrap ();
-			match _arguments.peek () {
-				Some (_argument) =>
-					match _argument.as_bytes () {
-						
-						b"--" => {
-							_arguments.next () .unwrap ();
-							break;
-						},
-						
-						b"--md5" =>
-							_hashes_flags.algorithm = &MD5,
-						b"--sha1" =>
-							_hashes_flags.algorithm = &SHA1,
-						b"--sha224" | b"--sha2-224" =>
-							_hashes_flags.algorithm = &SHA2_224,
-						b"--sha256" | b"--sha2-256" =>
-							_hashes_flags.algorithm = &SHA2_256,
-						b"--sha384" | b"--sha2-384" =>
-							_hashes_flags.algorithm = &SHA2_384,
-						b"--sha512" | b"--sha2-512" =>
-							_hashes_flags.algorithm = &SHA2_512,
-						b"--sha3-224" =>
-							_hashes_flags.algorithm = &SHA3_224,
-						b"--sha3-256" =>
-							_hashes_flags.algorithm = &SHA3_256,
-						b"--sha3-384" =>
-							_hashes_flags.algorithm = &SHA3_384,
-						b"--sha3-512" =>
-							_hashes_flags.algorithm = &SHA3_512,
-						
-						b"--zero" =>
-							_format_flags.zero = true,
-						
-						b"" =>
-							return Err (io::Error::new (io::ErrorKind::Other, "[c80572b3]  unexpected empty argument")),
-						_argument if _argument[0] == b'-' =>
-							return Err (io::Error::new (io::ErrorKind::Other, "[63a73c9c]  unexpected flag")),
-						_ =>
-							break,
-						
-					},
-				None =>
-					break,
-			}
-		}
-		
-		if _arguments.len () != 0 {
-			return Err (io::Error::new (io::ErrorKind::Other, "[f084735b]  unexpected arguments"));
-		}
+		let mut _parser = argparse::ArgumentParser::new ();
+		_hashes_flags.argparse (&mut _parser);
+		_format_flags.argparse (&mut _parser);
+		_parser.parse_args_or_exit ();
 	}
 	
 	
@@ -94,7 +46,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	loop {
 		
-		let mut _record = cpio::Reader::new (_input) ?;
+		let mut _record = cpio::newc::Reader::new (_input) ?;
 		
 		let _metadata = _record.entry ();
 		if _metadata.is_trailer () {
