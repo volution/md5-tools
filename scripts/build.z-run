@@ -86,17 +86,35 @@
 
 
 << run / md5-diff-go
-	"${ZRUN[@]}" ':: build / go' md5-diff
+	"${ZRUN[@]}" ':: build / md5-diff-go'
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
 		./target/go/md5-diff "${@}" \
 	#
 !!
 
+<< build / md5-diff-go
+	exec -- "${ZRUN[@]}" ':: build / go' md5-diff
+!!
+
+
+<< run / md5-copy-go
+	"${ZRUN[@]}" ':: build / md5-copy-go'
+	exec -- \
+		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
+		./target/go/md5-copy "${@}" \
+	#
+!!
+
+<< build / md5-copy-go
+	exec -- "${ZRUN[@]}" ':: build / go' md5-copy
+!!
+
+
 --<< build / go
 	test "${#}" -eq 1 ; _tool="${1}" ; shift -- 1
 	mkdir -p -- ./target/go
-	test -e "./sources/${_tool}.go"
+	test -e "./sources/bin/${_tool}.go"
 	exec -- go build \
 			-ldflags 'all=-s -extld=gcc -extldflags=-static' \
 			-gcflags 'all=-l=4' \
@@ -104,7 +122,7 @@
 			-o "./target/go/${_tool}" \
 			"${@}" \
 			-- \
-			"./sources/${_tool}.go" \
+			"./sources/bin/${_tool}.go" \
 	#
 !!
 
