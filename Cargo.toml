@@ -23,6 +23,7 @@ crossbeam = "*"
 regex = "*"
 cpio = "*"
 argparse = "*"
+chrono = "*"
 cpuprofiler = { version = "*", optional = true }
 
 [[bin]]
