@@ -77,6 +77,13 @@ func main () () {
 		}
 		
 		
+		// NOTE:  Skip empty files...
+		
+		if _hash == md5EmptyHash {
+			continue;
+		}
+		
+		
 		// NOTE:  Compute source and target paths...
 		
 		_sourceFile := path.Join (_sourcePath, _path)
@@ -302,4 +309,5 @@ func main () () {
 
 
 var md5RecordLine *regexp.Regexp = regexp.MustCompile (`^([0-9a-f]{32}) \*(.+)$`)
+var md5EmptyHash string = "d41d8cd98f00b204e9800998ecf8427e"
 
