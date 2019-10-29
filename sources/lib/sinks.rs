@@ -36,6 +36,11 @@ impl <Stream : io::Write> StandardHashesSink<'static, Stream> {
 			};
 		return _sink;
 	}
+	
+	pub fn done (self) -> (Result<Stream, io::Error>) {
+		let _stream = self.stream.into_inner () ?;
+		return Ok (_stream);
+	}
 }
 
 

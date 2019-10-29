@@ -1,6 +1,7 @@
 
 
 use ::argparse;
+use ::chrono;
 use ::crossbeam;
 use ::libc;
 use ::walkdir;
@@ -25,7 +26,8 @@ pub fn main () -> (Result<(), io::Error>) {
 			zero : false,
 		};
 	
-	let mut _path = path::PathBuf::from ("");
+	let mut _output_path = path::PathBuf::from ("");
+	let mut _source_path = path::PathBuf::from ("");
 	
 	let mut _threads_count = 0 as usize;
 	let mut _queue_size = 0 as usize;
@@ -65,10 +67,18 @@ pub fn main () -> (Result<(), io::Error>) {
 		_parser.refer (&mut _report_errors_to_stderr)
 				.add_option (&["--errors-to-stderr"], argparse::StoreTrue, "on errors report a message (true by default)")
 				.add_option (&["--no-errors-to-stderr"], argparse::StoreFalse, "on errors report a message");
-		_parser.refer (&mut _path) .add_argument ("path", argparse::Parse, "starting file or folder") .required ();
+		_parser.refer (&mut _output_path) .add_option (&["-o", "--output"], argparse::Parse, "output file (use `-` for `stdout`, and `.` for auto-detection) (`.` by default)");
+		_parser.refer (&mut _source_path) .add_argument ("source", argparse::Parse, "source file or folder") .required ();
 		_parser.parse_args_or_exit ();
 	}
 	
+	
+	if _output_path == path::Path::new ("") {
+		_output_path = path::PathBuf::from (".");
+	}
+	if _source_path == path::Path::new ("") {
+		_source_path = path::PathBuf::from (".");
+	}
 	
 	if _threads_count == 0 {
 		_threads_count = 16;
@@ -91,9 +101,127 @@ pub fn main () -> (Result<(), io::Error>) {
 	}
 	
 	
-	let _output = fs::OpenOptions::new () .write (true) .open ("/dev/stdout") ?;
 	
-	let _sink = StandardHashesSink::new (_output, _format_flags.zero);
+	
+	let _output_path = if _output_path == path::Path::new ("-") {
+		None
+		
+	} else {
+		
+		let _output_path_with_transformer = if _output_path != path::Path::new (".") {
+			match fs::metadata (&_output_path) {
+				Ok (ref _stat) if _stat.is_dir () =>
+					Some ((_output_path, Some (true))),
+				Ok (ref _stat) if _stat.is_file () =>
+					return Err (io::Error::new (io::ErrorKind::Other, "[b4ab81b9]  invalid output path (already exists)")),
+				Ok (_) =>
+					return Err (io::Error::new (io::ErrorKind::Other, "[8366e424]  invalid output path (non file or folder)")),
+				Err (ref _error) if _error.kind () == io::ErrorKind::NotFound =>
+					Some ((_output_path, None)),
+				Err (_error) =>
+					return Err (_error),
+			}
+			
+		} else {
+			match fs::metadata (&_source_path) {
+				Ok (ref _stat) if _stat.is_dir () => {
+					let _output_path_base = _source_path.join (".md5");
+					match fs::metadata (&_output_path_base) {
+						Ok (ref _stat) if _stat.is_dir () =>
+							Some ((_output_path_base, Some (true))),
+						Ok (ref _stat) if _stat.is_file () =>
+							Some ((_output_path_base, Some (false))),
+						Ok (_) =>
+							return Err (io::Error::new (io::ErrorKind::Other, "[2cb4982d]  invalid `.md5` path (non file or folder)")),
+						Err (ref _error) if _error.kind () == io::ErrorKind::NotFound => {
+							let mut _output_path = ffi::OsString::from (&_source_path);
+							_output_path.push (path::MAIN_SEPARATOR.to_string ());
+							_output_path.push (".");
+							Some ((_output_path.into (), Some (false)))
+						},
+						Err (_error) =>
+							return Err (_error),
+					}
+				},
+				Ok (ref _stat) if _stat.is_file () =>
+					Some ((_source_path.clone (), Some (false))),
+				Ok (_) =>
+					return Err (io::Error::new (io::ErrorKind::Other, "[cce14438]  invalid source path (non file or folder)")),
+				Err (ref _error) if _error.kind () == io::ErrorKind::NotFound =>
+					return Err (io::Error::new (io::ErrorKind::Other, "[5f86a63d]  invalid source path (non exists)")),
+				Err (_error) =>
+					return Err (_error),
+			}
+		};
+		
+		match _output_path_with_transformer {
+			None =>
+				None,
+			Some ((_output_path, None)) =>
+				Some (_output_path),
+			Some ((_output_path_base, Some (_transformer))) => {
+				
+				// FIXME:  Add support for proper suffix!
+				let _output_path_suffix = ".md5";
+				
+				let _output_timestamp = {
+					
+					use chrono::Datelike as _;
+					use chrono::Timelike as _;
+					let _output_timestamp = chrono::Local::now ();
+					let _output_timestamp_date = _output_timestamp.date ();
+					let _output_timestamp_time = _output_timestamp.time ();
+					
+					format! (
+							"{:04}-{:02}-{:02}-{:02}-{:02}-{:02}",
+							_output_timestamp_date.year (),
+							_output_timestamp_date.month (),
+							_output_timestamp_date.day (),
+							_output_timestamp_time.hour (),
+							_output_timestamp_time.minute (),
+							_output_timestamp_time.second (),
+						)
+				};
+				
+				if _transformer {
+					let _output_path = _output_path_base.join (_output_timestamp + _output_path_suffix);
+					Some (_output_path)
+				} else {
+					let mut _output_path = ffi::OsString::from (_output_path_base);
+					_output_path.push ("--");
+					_output_path.push (_output_timestamp);
+					_output_path.push (_output_path_suffix);
+					Some (_output_path.into ())
+				}
+			}
+		}
+	};
+	
+	let _output_path_and_tmp = if let Some (_output_path) = _output_path {
+		let mut _output_path_tmp = ffi::OsString::from (&_output_path);
+		_output_path_tmp.push (".tmp");
+		let _output_path_tmp = path::PathBuf::from (_output_path_tmp);
+		Some ((_output_path, _output_path_tmp))
+	} else {
+		None
+	};
+	
+	
+	
+	
+	if let Some ((ref _output_path, _)) = _output_path_and_tmp {
+		eprintln! ("[ii] [8cc8542c]  creating `{}`...", _output_path.to_string_lossy ());
+	}
+	let _output_file = if let Some ((_, ref _output_path_tmp)) = _output_path_and_tmp {
+		let mut _output_file = fs::OpenOptions::new () .create_new (true) .write (true) .open (_output_path_tmp) ?;
+		_output_file.set_permissions (fs::Permissions::from_mode (0o600)) ?;
+		_output_file
+	} else {
+		fs::OpenOptions::new () .write (true) .open ("/dev/stdout") ?
+	};
+	
+	
+	let _sink = StandardHashesSink::new (_output_file, _format_flags.zero);
 	let _sink = sync::Arc::new (sync::Mutex::new (_sink));
 	
 	
@@ -206,6 +334,7 @@ pub fn main () -> (Result<(), io::Error>) {
 					}
 				}
 				
+				drop (_sink);
 				drop (_done);
 				
 				return Ok (());
@@ -215,7 +344,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	}
 	
 	
-	let mut _walker = walkdir::WalkDir::new (&_path)
+	let mut _walker = walkdir::WalkDir::new (&_source_path)
 			.same_file_system (_walk_xdev)
 			.follow_links (_walk_follow)
 			.contents_first (true)
@@ -232,7 +361,7 @@ pub fn main () -> (Result<(), io::Error>) {
 				_entry,
 			Some (Err (_error)) => {
 				let mut _sink = _sink.lock () .unwrap ();
-				let _path = _error.path () .unwrap_or (&_path);
+				let _path = _error.path () .unwrap_or (&_source_path);
 				if let Some (_ancestor) = _error.loop_ancestor () {
 					eprintln! ("[ww] [55021f5c]  detected walking loop for `{}` pointing at `{}`;  ignoring!", _path.to_string_lossy (), _ancestor.to_string_lossy ());
 					continue;
@@ -261,7 +390,7 @@ pub fn main () -> (Result<(), io::Error>) {
 				_metadata,
 			Err (_error) => {
 				let mut _sink = _sink.lock () .unwrap ();
-				let _path = _error.path () .unwrap_or (&_path);
+				let _path = _error.path () .unwrap_or (&_source_path);
 				if _report_errors_to_stderr {
 					eprintln! ("[ee] [96d2838a]  failed walking path `{}`: `{}`!", _entry.path () .to_string_lossy (), _error.io_error () .unwrap_or (&_unknown_error));
 				}
@@ -289,6 +418,19 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	
 	_done.wait ();
+	
+	
+	let _sink = sync::Arc::try_unwrap (_sink) .ok () .expect ("[3d3636b0]");
+	let _sink = _sink.into_inner () .expect ("[1a198ea3]");
+	let mut _output_file = _sink.done () ?;
+	_output_file.sync_all () ?;
+	
+	if let Some ((ref _output_path, ref _output_path_tmp)) = _output_path_and_tmp {
+		_output_file.set_permissions (fs::Permissions::from_mode (0o400)) ?;
+		fs::rename (_output_path_tmp, _output_path) ?;
+	}
+	drop (_output_file);
+	
 	
 	for _completion in _completions.into_iter () {
 		match _completion.join () {
