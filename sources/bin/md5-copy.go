@@ -147,7 +147,7 @@ func main () () {
 			}
 		} else if os.IsNotExist (_error) {
 //			fmt.Fprintf (os.Stderr, "[dd] [d26e2ffd]  creating target folder `%s`...\n", _targetFolder_1)
-			if _error := os.Mkdir (_targetFolder_1, 0700); _error != nil {
+			if _error := os.Mkdir (_targetFolder_1, 0700); (_error != nil) && ! os.IsExist (_error) {
 				panic (_error)
 			}
 		} else {
@@ -160,7 +160,7 @@ func main () () {
 			}
 		} else if os.IsNotExist (_error) {
 //			fmt.Fprintf (os.Stderr, "[dd] [d26e2ffd]  creating target folder `%s`...\n", _targetFolder_2)
-			if _error := os.Mkdir (_targetFolder_2, 0700); _error != nil {
+			if _error := os.Mkdir (_targetFolder_2, 0700); (_error != nil) && ! os.IsExist (_error) {
 				panic (_error)
 			}
 		} else {
@@ -174,6 +174,8 @@ func main () () {
 		var _targetStreamTmp_1 *os.File
 		if _stream_0, _error := os.OpenFile (_targetFileTmp, os.O_WRONLY | os.O_CREATE | os.O_EXCL, 0600); _error == nil {
 			_targetStreamTmp_1 = _stream_0
+		} else if os.IsExist (_error) {
+			continue
 		} else {
 			panic (_error)
 		}
