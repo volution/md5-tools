@@ -29,11 +29,12 @@ pub fn main () -> (Result<(), io::Error>) {
 	let mut _output_path = path::PathBuf::from ("");
 	let mut _source_path = path::PathBuf::from ("");
 	
+	let mut _relative = true;
+	let mut _walk_xdev = false;
+	let mut _walk_follow = false;
 	let mut _threads_count = 0 as usize;
 	let mut _queue_size = 0 as usize;
 	let mut _nice_level = 19 as i8;
-	let mut _walk_xdev = false;
-	let mut _walk_follow = false;
 	
 	let mut _ignore_all_errors = false;
 	let mut _ignore_walk_errors = false;
@@ -47,6 +48,9 @@ pub fn main () -> (Result<(), io::Error>) {
 		let mut _parser = argparse::ArgumentParser::new ();
 		_hashes_flags.argparse (&mut _parser);
 		_format_flags.argparse (&mut _parser);
+		_parser.refer (&mut _relative)
+				.add_option (&["--relative"], argparse::StoreTrue, "output paths relative to source (true by default)")
+				.add_option (&["--no-relative"], argparse::StoreFalse, "do not output paths relative to source");
 		_parser.refer (&mut _walk_xdev) .add_option (&["-x", "--xdev"], argparse::StoreTrue, "do not cross mount points");
 		_parser.refer (&mut _walk_follow) .add_option (&["-L", "--follow"], argparse::StoreTrue, "follow symlinks (n.b. arguments are followed)");
 		_parser.refer (&mut _threads_count) .add_option (&["-w", "--workers-count"], argparse::Parse, "hashing workers count (16 by default)");
@@ -99,6 +103,34 @@ pub fn main () -> (Result<(), io::Error>) {
 			libc::nice (_nice_level as i32);
 		}
 	}
+	
+	
+	
+	
+	let _relative_path = match fs::metadata (&_source_path) {
+		Ok (ref _stat) if _stat.is_dir () =>
+			if _relative {
+				Some (_source_path.clone ())
+			} else {
+				None
+			},
+		Ok (ref _stat) if _stat.is_file () =>
+			if _relative {
+				if let Some (_relative_path) = _source_path.parent () {
+					Some (_relative_path.into ())
+				} else {
+					None
+				}
+			} else {
+				None
+			},
+		Ok (_) =>
+			return Err (io::Error::new (io::ErrorKind::Other, "[a12f1634]  invalid source path (non file or folder)")),
+		Err (ref _error) if _error.kind () == io::ErrorKind::NotFound =>
+			return Err (io::Error::new (io::ErrorKind::Other, "[9ee46264]  invalid source path (non exists)")),
+		Err (_error) =>
+			return Err (_error),
+	};
 	
 	
 	
@@ -233,6 +265,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	for _ in 0 .. _threads_count {
 		
+		let _relative_path = _relative_path.clone ();
 		let _sink = sync::Arc::clone (&_sink);
 		let _dequeue = _dequeue.clone ();
 		let _threads_errors = sync::Arc::clone (&_threads_errors);
@@ -254,6 +287,12 @@ pub fn main () -> (Result<(), io::Error>) {
 					};
 					
 					let _path = _entry.path ();
+					let _path_for_sink = if let Some (ref _relative_path) = _relative_path {
+						_path.strip_prefix (_relative_path) .unwrap () .as_os_str ()
+					} else {
+						_path.as_os_str ()
+					};
+					let _path_for_sink = if _path_for_sink != "" { _path_for_sink } else { ffi::OsStr::new (".") };
 					
 					let mut _open = fs::OpenOptions::new ();
 					_open.read (true);
@@ -267,7 +306,7 @@ pub fn main () -> (Result<(), io::Error>) {
 								eprintln! ("[ee] [42f1352f]  failed opening file `{}`: `{}`!", _path.to_string_lossy (), _error);
 							}
 							if _report_errors_to_sink {
-								_sink.handle (_path.as_os_str (), _hashes_algorithm.invalid_raw) ?;
+								_sink.handle (_path_for_sink, _hashes_algorithm.invalid_raw) ?;
 								_sink.flush () ?;
 							}
 							_threads_errors.lock () .unwrap () .push (_error);
@@ -301,7 +340,7 @@ pub fn main () -> (Result<(), io::Error>) {
 					match digest (_hashes_algorithm, &mut _file, &mut _hash_buffer) {
 						Ok (()) => {
 							let mut _sink = _sink.lock () .unwrap ();
-							_sink.handle (_path.as_os_str (), &_hash_buffer) ?;
+							_sink.handle (_path_for_sink, &_hash_buffer) ?;
 						},
 						Err (_error) => {
 							let mut _sink = _sink.lock () .unwrap ();
@@ -309,7 +348,7 @@ pub fn main () -> (Result<(), io::Error>) {
 								eprintln! ("[ee] [1aeb2750]  failed reading file `{}`: `{}`!", _path.to_string_lossy (), _error);
 							}
 							if _report_errors_to_sink {
-								_sink.handle (_path.as_os_str (), _hashes_algorithm.invalid_raw) ?;
+								_sink.handle (_path_for_sink, _hashes_algorithm.invalid_raw) ?;
 								_sink.flush () ?;
 							}
 							_threads_errors.lock () .unwrap () .push (_error);
@@ -370,7 +409,13 @@ pub fn main () -> (Result<(), io::Error>) {
 					eprintln! ("[ee] [a5e88e25]  failed walking path `{}`: `{}`!", _path.to_string_lossy (), _error.io_error () .unwrap_or (&_unknown_error));
 				}
 				if _report_errors_to_sink {
-					_sink.handle (_path.as_os_str (), _hashes_flags.algorithm.invalid_raw) ?;
+					let _path_for_sink = if let Some (ref _relative_path) = _relative_path {
+						_path.strip_prefix (_relative_path) .unwrap () .as_os_str ()
+					} else {
+						_path.as_os_str ()
+					};
+					let _path_for_sink = if _path_for_sink != "" { _path_for_sink } else { ffi::OsStr::new (".") };
+					_sink.handle (_path_for_sink, _hashes_flags.algorithm.invalid_raw) ?;
 					_sink.flush () ?;
 				}
 				if _ignore_walk_errors {
@@ -395,7 +440,14 @@ pub fn main () -> (Result<(), io::Error>) {
 					eprintln! ("[ee] [96d2838a]  failed walking path `{}`: `{}`!", _entry.path () .to_string_lossy (), _error.io_error () .unwrap_or (&_unknown_error));
 				}
 				if _report_errors_to_sink {
-					_sink.handle (_entry.path () .as_os_str (), _hashes_flags.algorithm.invalid_raw) ?;
+					let _path = _entry.path ();
+					let _path_for_sink = if let Some (ref _relative_path) = _relative_path {
+						_path.strip_prefix (_relative_path) .unwrap () .as_os_str ()
+					} else {
+						_path.as_os_str ()
+					};
+					let _path_for_sink = if _path_for_sink != "" { _path_for_sink } else { ffi::OsStr::new (".") };
+					_sink.handle (_path_for_sink, _hashes_flags.algorithm.invalid_raw) ?;
 					_sink.flush () ?;
 				}
 				if _ignore_walk_errors {
@@ -423,10 +475,10 @@ pub fn main () -> (Result<(), io::Error>) {
 	let _sink = sync::Arc::try_unwrap (_sink) .ok () .expect ("[3d3636b0]");
 	let _sink = _sink.into_inner () .expect ("[1a198ea3]");
 	let mut _output_file = _sink.done () ?;
-	_output_file.sync_all () ?;
 	
 	if let Some ((ref _output_path, ref _output_path_tmp)) = _output_path_and_tmp {
 		_output_file.set_permissions (fs::Permissions::from_mode (0o400)) ?;
+		_output_file.sync_all () ?;
 		fs::rename (_output_path_tmp, _output_path) ?;
 	}
 	drop (_output_file);
