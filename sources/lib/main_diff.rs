@@ -407,7 +407,14 @@ fn load_from_stream <Stream : io::Read> (_stream : &mut Stream, _path : & path::
 				let _split = _buffer.iter () .position (|&_byte| _byte == b' ') .unwrap ();
 				
 				let _hash = &_buffer[.. _split];
-				let _path = &_buffer[_split + 1 ..];
+				let mut _path = &_buffer[_split + 2 ..];
+				
+				if ! _path.is_empty () && _path[0] == b'.' {
+					_path = &_path[1..];
+				}
+				if ! _path.is_empty () && _path[0] == b'/' {
+					_path = &_path[1..];
+				}
 				
 				let _hash = str::from_utf8 (_hash) .unwrap ();
 				let _path = ffi::OsStr::from_bytes (_path);
