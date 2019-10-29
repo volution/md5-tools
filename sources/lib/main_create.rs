@@ -244,12 +244,14 @@ pub fn main () -> (Result<(), io::Error>) {
 	if let Some ((ref _output_path, _)) = _output_path_and_tmp {
 		eprintln! ("[ii] [8cc8542c]  creating `{}`...", _output_path.to_string_lossy ());
 	}
-	let _output_file = if let Some ((_, ref _output_path_tmp)) = _output_path_and_tmp {
+	let (_output_file, _output_stat) = if let Some ((_, ref _output_path_tmp)) = _output_path_and_tmp {
 		let mut _output_file = fs::OpenOptions::new () .create_new (true) .write (true) .open (_output_path_tmp) ?;
 		_output_file.set_permissions (fs::Permissions::from_mode (0o600)) ?;
-		_output_file
+		let _output_stat = _output_file.metadata () ?;
+		(_output_file, Some (_output_stat))
 	} else {
-		fs::OpenOptions::new () .write (true) .open ("/dev/stdout") ?
+		let _output_file = fs::OpenOptions::new () .write (true) .open ("/dev/stdout") ?;
+		(_output_file, None)
 	};
 	
 	
@@ -459,6 +461,12 @@ pub fn main () -> (Result<(), io::Error>) {
 				}
 			},
 		};
+		
+		if let Some (ref _output_stat) = _output_stat {
+			if (_metadata.dev () == _output_stat.dev ()) && (_metadata.ino () == _output_stat.ino ()) {
+				continue;
+			}
+		}
 		
 		if _metadata.is_file () {
 			_enqueue.send (_entry) .unwrap ();
