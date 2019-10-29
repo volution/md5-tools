@@ -178,11 +178,27 @@ func main () () {
 			panic (_error)
 		}
 		
+		{
+			var _error error
+			_error = Fadvise (_sourceStream.Fd (), 0, 0, FADV_SEQUENTIAL)
+			if _error != nil { panic (_error) }
+			_error = Fadvise (_sourceStream.Fd (), 0, 0, FADV_NOREUSE)
+			if _error != nil { panic (_error) }
+			_error = Fadvise (_sourceStream.Fd (), 0, 0, FADV_WILLNEED)
+			if _error != nil { panic (_error) }
+		}
+		
 		var _dataSize int64
 		if _size_0, _error := io.Copy (_targetStreamTmp_1, _sourceStream); _error == nil {
 			_dataSize = _size_0
 		} else {
 			panic (_error)
+		}
+		
+		{
+			var _error error
+			_error = Fadvise (_sourceStream.Fd (), 0, 0, FADV_DONTNEED)
+			if _error != nil { panic (_error) }
 		}
 		
 		if _error := _targetStreamTmp_1.Chmod (0400); _error != nil {
@@ -272,6 +288,12 @@ func main () () {
 		
 		// NOTE:  Close source and target files...
 		
+		{
+			var _error error
+			_error = Fadvise (_targetStreamTmp_1.Fd (), 0, 0, FADV_DONTNEED)
+			if _error != nil { panic (_error) }
+		}
+		
 		if _error := _targetStreamTmp_1.Close (); _error != nil {
 			panic (_error)
 		}
@@ -310,4 +332,27 @@ func main () () {
 
 var md5RecordLine *regexp.Regexp = regexp.MustCompile (`^([0-9a-f]{32}) \*(.+)$`)
 var md5EmptyHash string = "d41d8cd98f00b204e9800998ecf8427e"
+
+
+
+
+// NOTE:  https://github.com/golang/sys/blob/master/unix/zsyscall_linux_amd64.go#L1800
+func Fadvise(fd uintptr, offset int64, length int64, advice int) (error) {
+	_, _, e := syscall.Syscall6(syscall.SYS_FADVISE64, uintptr(fd), uintptr(offset), uintptr(length), uintptr(advice), 0, 0)
+	if e == 0 {
+		return nil
+	} else {
+		return e
+	}
+}
+
+// NOTE:  https://github.com/golang/sys/blob/master/unix/ztypes_linux_amd64.go#L188
+const (
+	FADV_NORMAL     = 0x0
+	FADV_RANDOM     = 0x1
+	FADV_SEQUENTIAL = 0x2
+	FADV_WILLNEED   = 0x3
+	FADV_DONTNEED   = 0x4
+	FADV_NOREUSE    = 0x5
+)
 
