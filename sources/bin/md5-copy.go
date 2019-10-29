@@ -11,6 +11,8 @@ import "io"
 import "os"
 import "path"
 import "regexp"
+import "strconv"
+import "sync"
 import "syscall"
 
 
@@ -18,19 +20,43 @@ import "syscall"
 
 func main () () {
 	
-	if len (os.Args) != 4 {
+	if len (os.Args) != 5 {
 		panic ("[0071e111]  invalid arguments")
 	}
 	
 	_hashesPath := os.Args[1]
 	_sourcePath := os.Args[2]
 	_targetPath := os.Args[3]
+	_parallelism := 16
+	if _value, _error := strconv.ParseUint (os.Args[4], 10, 16); _error == nil {
+		if _value != 0 {
+			_parallelism = int (_value)
+		}
+	} else {
+		panic (_error)
+	}
+	
 	
 	var _hashesStream *bufio.Reader
 	if _stream_0 , _error := os.Open (_hashesPath); _error == nil {
 		_hashesStream = bufio.NewReaderSize (_stream_0, 16 * 1024 * 1024)
 	} else {
 		panic (_error)
+	}
+	
+	
+	_workersQueue := make (chan [2]string, _parallelism * 1024)
+	_workersDone := & sync.WaitGroup {}
+	for _index := 0; _index < _parallelism; _index += 1 {
+		_workersDone.Add (1)
+		go func () () {
+			for _hash_and_path := range _workersQueue {
+				_hash := _hash_and_path[0]
+				_path := _hash_and_path[1]
+				copy (_hash, _path, _sourcePath, _targetPath)
+			}
+			_workersDone.Done ()
+		} ()
 	}
 	
 	
@@ -83,8 +109,11 @@ func main () () {
 			continue
 		}
 		
-		copy (_hash, _path, _sourcePath, _targetPath)
+		_workersQueue <- [2]string { _hash, _path }
 	}
+	
+	close (_workersQueue)
+	_workersDone.Wait ()
 }
 
 
