@@ -62,7 +62,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		_parser.refer (&mut _walk_follow) .add_option (&["-L", "--follow"], argparse::StoreTrue, "follow symlinks (n.b. arguments are followed)");
 		_parser.refer (&mut _threads_count) .add_option (&["-w", "--workers-count"], argparse::Parse, "hashing workers count (4 by default)");
 		_parser.refer (&mut _queue_size) .add_option (&["--workers-queue"], argparse::Parse, "hashing workers queue size (1024 times workers count by default)");
-		_parser.refer (&mut _batch_size) .add_option (&["--workers-batch"], argparse::Parse, "hashing workers batch size (half of the workers queue size by default)");
+		_parser.refer (&mut _batch_size) .add_option (&["--workers-batch"], argparse::Parse, "hashing workers batch size (1/4 times workers queue size by default)");
 		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "set OS process scheduling priority (i.e. `nice`) (19 by default)");
 		_parser.refer (&mut _io_fadvise) .add_option (&["--fadvise"], argparse::StoreTrue, "use OS `fadvise` with sequential and no-reuse (false by default)");
 		_parser.refer (&mut _ignore_all_errors)
