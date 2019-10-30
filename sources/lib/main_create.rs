@@ -302,7 +302,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		let _files = indicatif::ProgressBar::new (0);
 		_files.set_style (
 				indicatif::ProgressStyle::default_bar ()
-					.template("| {elapsed_precise} | {wide_bar} | {len:>9} | {per_sec:>9} | {percent:>3}% |")
+					.template("| {elapsed_precise} | {wide_bar} | {len:>10} | {per_sec:>10} | {percent:>3}% |")
 					.progress_chars("=>-")
 			);
 		_files.set_draw_delta (100);
@@ -311,7 +311,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		let _data = indicatif::ProgressBar::new (0);
 		_data.set_style (
 				indicatif::ProgressStyle::default_bar ()
-					.template("| {eta_precise} | {wide_bar} | {total_bytes:>9} | {bytes_per_sec:>9} | {percent:>3}% |")
+					.template("| {eta_precise} | {wide_bar} | {total_bytes:>10} | {bytes_per_sec:>10} | {percent:>3}% |")
 					.progress_chars("=>-")
 			);
 		_data.set_draw_delta (1024 * 1024);
