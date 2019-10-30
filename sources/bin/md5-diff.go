@@ -459,6 +459,11 @@ func parseLine (_line string, _records map[string][]string) (error) {
 	if _slices := md5RecordLine.FindStringSubmatch (_line); _slices != nil {
 		_hash := _slices[1]
 		_path := _slices[2]
+		if _path[0:2] == "./" {
+			_path = _path[2:]
+		} else if _path[0:1] == "/" {
+			_path = _path[1:]
+		}
 		if _paths, _exists := _records[_hash]; _exists {
 			_records[_hash] = append (_paths, _path)
 		} else {

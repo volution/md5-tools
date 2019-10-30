@@ -409,11 +409,14 @@ fn load_from_stream <Stream : io::Read> (_stream : &mut Stream, _path : & path::
 				let _hash = &_buffer[.. _split];
 				let mut _path = &_buffer[_split + 2 ..];
 				
-				if ! _path.is_empty () && _path[0] == b'.' {
+				if (_path.len () >= 2) && &_path[0..2] == b"./" {
+					_path = &_path[2..];
+				}
+				if (_path.len () >= 1) && &_path[0..1] == b"/" {
 					_path = &_path[1..];
 				}
-				if ! _path.is_empty () && _path[0] == b'/' {
-					_path = &_path[1..];
+				if _path.is_empty () {
+					_path = b".";
 				}
 				
 				let _hash = str::from_utf8 (_hash) .unwrap ();
