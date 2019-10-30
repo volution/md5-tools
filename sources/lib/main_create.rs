@@ -407,7 +407,7 @@ pub fn main () -> (Result<(), io::Error>) {
 			.into_iter ();
 	
 	let mut _batch = if _batch_size > 1 {
-		Some (Vec::<walkdir::DirEntry>::with_capacity (_batch_size))
+		Some (Vec::<(walkdir::DirEntry, (u64, u64))>::with_capacity (_batch_size))
 	} else {
 		None
 	};
@@ -421,8 +421,8 @@ pub fn main () -> (Result<(), io::Error>) {
 		
 		if let Some (ref mut _batch) = _batch {
 			if _batch.capacity () == _batch.len () {
-				_batch.sort_by_key (|_entry| { let _metadata = _entry.metadata () .unwrap (); (_metadata.dev (), _metadata.ino ()) });
-				for _entry in _batch.drain (..) {
+				_batch.sort_by_key (|&(_, _order)| _order);
+				for (_entry, _) in _batch.drain (..) {
 					_enqueue.send (_entry) .unwrap ();
 				}
 			}
@@ -501,7 +501,8 @@ pub fn main () -> (Result<(), io::Error>) {
 		
 		if _metadata.is_file () {
 			if let Some (ref mut _batch) = _batch {
-				_batch.push (_entry);
+				let _order = (_metadata.dev (), _metadata.ino ());
+				_batch.push ((_entry, _order));
 			} else {
 				_enqueue.send (_entry) .unwrap ();
 			}
@@ -509,7 +510,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	}
 	
 	if let Some (ref mut _batch) = _batch {
-		for _entry in _batch.drain (..) {
+		for (_entry, _) in _batch.drain (..) {
 			_enqueue.send (_entry) .unwrap ();
 		}
 	}
