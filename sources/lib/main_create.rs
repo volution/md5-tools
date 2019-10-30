@@ -319,6 +319,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		
 		{
 			let _dashboard = indicatif::MultiProgress::new ();
+			_dashboard.set_draw_target (indicatif::ProgressDrawTarget::stderr_with_hz (4));
 			_dashboard.add (_files.clone ());
 			_dashboard.add (_data.clone ());
 			thread::spawn (move || -> () {
