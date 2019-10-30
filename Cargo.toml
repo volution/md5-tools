@@ -24,6 +24,8 @@ regex = "*"
 cpio = "*"
 argparse = "*"
 chrono = "*"
+atty = "*"
+indicatif = "*"
 cpuprofiler = { version = "*", optional = true }
 
 [[bin]]
