@@ -1,8 +1,10 @@
 
 
+use ::atty;
 use ::argparse;
 use ::chrono;
 use ::crossbeam;
+use ::indicatif;
 use ::libc;
 use ::walkdir;
 
@@ -29,6 +31,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	let mut _output_path = path::PathBuf::from ("");
 	let mut _source_path = path::PathBuf::from ("");
 	
+	let mut _progress = true;
 	let mut _relative = true;
 	let mut _walk_xdev = false;
 	let mut _walk_follow = false;
@@ -49,14 +52,17 @@ pub fn main () -> (Result<(), io::Error>) {
 		let mut _parser = argparse::ArgumentParser::new ();
 		_hashes_flags.argparse (&mut _parser);
 		_format_flags.argparse (&mut _parser);
+		_parser.refer (&mut _progress)
+				.add_option (&["--progress"], argparse::StoreTrue, "enable progress bar (true by default)")
+				.add_option (&["--no-progress"], argparse::StoreFalse, "disable progress bar");
 		_parser.refer (&mut _relative)
 				.add_option (&["--relative"], argparse::StoreTrue, "output paths relative to source (true by default)")
 				.add_option (&["--no-relative"], argparse::StoreFalse, "do not output paths relative to source");
 		_parser.refer (&mut _walk_xdev) .add_option (&["-x", "--xdev"], argparse::StoreTrue, "do not cross mount points");
 		_parser.refer (&mut _walk_follow) .add_option (&["-L", "--follow"], argparse::StoreTrue, "follow symlinks (n.b. arguments are followed)");
-		_parser.refer (&mut _threads_count) .add_option (&["-w", "--workers-count"], argparse::Parse, "hashing workers count (16 by default)");
+		_parser.refer (&mut _threads_count) .add_option (&["-w", "--workers-count"], argparse::Parse, "hashing workers count (4 by default)");
 		_parser.refer (&mut _queue_size) .add_option (&["--workers-queue"], argparse::Parse, "hashing workers queue size (1024 times workers count by default)");
-		_parser.refer (&mut _batch_size) .add_option (&["--workers-batch"], argparse::Parse, "hashing workers batch size (16 times workers queue size by default)");
+		_parser.refer (&mut _batch_size) .add_option (&["--workers-batch"], argparse::Parse, "hashing workers batch size (half of the workers queue size by default)");
 		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "set OS process scheduling priority (i.e. `nice`) (19 by default)");
 		_parser.refer (&mut _io_fadvise) .add_option (&["--fadvise"], argparse::StoreTrue, "use OS `fadvise` with sequential and no-reuse (false by default)");
 		_parser.refer (&mut _ignore_all_errors)
@@ -87,13 +93,13 @@ pub fn main () -> (Result<(), io::Error>) {
 	}
 	
 	if _threads_count == 0 {
-		_threads_count = 16;
+		_threads_count = 4;
 	}
 	if _queue_size == 0 {
 		_queue_size = _threads_count * 1024;
 	}
 	if _batch_size == 0 {
-		_batch_size = _queue_size * 16;
+		_batch_size = _queue_size / 4;
 	}
 	if _ignore_all_errors {
 		_ignore_walk_errors = true;
@@ -266,6 +272,9 @@ pub fn main () -> (Result<(), io::Error>) {
 		(_output_file, Some (_output_stat))
 	} else {
 		let _output_file = fs::OpenOptions::new () .write (true) .open ("/dev/stdout") ?;
+		if atty::is (atty::Stream::Stdout) {
+			_progress = false;
+		}
 		(_output_file, None)
 	};
 	
@@ -274,10 +283,70 @@ pub fn main () -> (Result<(), io::Error>) {
 	let _sink = sync::Arc::new (sync::Mutex::new (_sink));
 	
 	
-	let (_enqueue, _dequeue) = crossbeam::channel::bounded::<walkdir::DirEntry> (_queue_size);
+	let (_enqueue, _dequeue) = crossbeam::channel::bounded::<(walkdir::DirEntry, u64)> (_queue_size);
 	let mut _completions = Vec::with_capacity (_threads_count);
 	let _threads_errors = sync::Arc::new (sync::Mutex::new (Vec::new ()));
 	let _done = crossbeam::sync::WaitGroup::new ();
+	
+	
+	
+	
+	#[ derive (Clone) ]
+	struct Progress {
+		files : indicatif::ProgressBar,
+		data : indicatif::ProgressBar,
+	}
+	
+	let _progress = if _progress {
+		
+		let _files = indicatif::ProgressBar::new (0);
+		_files.set_style (
+				indicatif::ProgressStyle::default_bar ()
+					.template("| {elapsed_precise} | {wide_bar} | {len:>9} | {per_sec:>9} | {percent:>3}% |")
+					.progress_chars("=>-")
+			);
+		_files.set_draw_delta (100);
+		_files.enable_steady_tick (1000);
+		
+		let _data = indicatif::ProgressBar::new (0);
+		_data.set_style (
+				indicatif::ProgressStyle::default_bar ()
+					.template("| {eta_precise} | {wide_bar} | {total_bytes:>9} | {bytes_per_sec:>9} | {percent:>3}% |")
+					.progress_chars("=>-")
+			);
+		_data.set_draw_delta (1024 * 1024);
+		_data.enable_steady_tick (1000);
+		
+		{
+			let _dashboard = indicatif::MultiProgress::new ();
+			_dashboard.add (_files.clone ());
+			_dashboard.add (_data.clone ());
+			thread::spawn (move || -> () {
+					_dashboard.join () .unwrap ();
+				});
+		}
+		
+		Some (Progress {
+				files : _files,
+				data : _data,
+			})
+		
+	} else {
+		None
+	};
+	
+	
+	macro_rules! message {
+		( $progress : expr, $( $token : tt )+ ) => (
+			if let Some (ref _progress) = $progress {
+				_progress.files.println (format! ( $( $token )+ ));
+			} else {
+				eprintln! ( $( $token )+ );
+			}
+		)
+	}
+	
+	
 	
 	
 	for _ in 0 .. _threads_count {
@@ -286,6 +355,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		let _sink = sync::Arc::clone (&_sink);
 		let _dequeue = _dequeue.clone ();
 		let _threads_errors = sync::Arc::clone (&_threads_errors);
+		let _progress = _progress.clone ();
 		let _done = _done.clone ();
 		
 		let _hashes_algorithm = _hashes_flags.algorithm;
@@ -296,7 +366,7 @@ pub fn main () -> (Result<(), io::Error>) {
 				
 				loop {
 					
-					let _entry = match _dequeue.recv () {
+					let (_entry, _size) = match _dequeue.recv () {
 						Ok (_entry) =>
 							_entry,
 						Err (crossbeam::channel::RecvError) =>
@@ -320,7 +390,7 @@ pub fn main () -> (Result<(), io::Error>) {
 						Err (_error) => {
 							let mut _sink = _sink.lock () .unwrap ();
 							if _report_errors_to_stderr {
-								eprintln! ("[ee] [42f1352f]  failed opening file `{}`: `{}`!", _path.to_string_lossy (), _error);
+								message! (_progress, "[ee] [42f1352f]  failed opening file `{}`: `{}`!", _path.to_string_lossy (), _error);
 							}
 							if _report_errors_to_sink {
 								_sink.handle (_path_for_sink, _hashes_algorithm.invalid_raw) ?;
@@ -349,7 +419,7 @@ pub fn main () -> (Result<(), io::Error>) {
 							}
 						}
 						if _failed {
-							eprintln! ("[ww] [76280772]  `fadvise` failed!")
+							message! (_progress, "[ww] [76280772]  `fadvise` failed!")
 						}
 					}
 					
@@ -362,7 +432,7 @@ pub fn main () -> (Result<(), io::Error>) {
 						Err (_error) => {
 							let mut _sink = _sink.lock () .unwrap ();
 							if _report_errors_to_stderr {
-								eprintln! ("[ee] [1aeb2750]  failed reading file `{}`: `{}`!", _path.to_string_lossy (), _error);
+								message! (_progress, "[ee] [1aeb2750]  failed reading file `{}`: `{}`!", _path.to_string_lossy (), _error);
 							}
 							if _report_errors_to_sink {
 								_sink.handle (_path_for_sink, _hashes_algorithm.invalid_raw) ?;
@@ -385,8 +455,13 @@ pub fn main () -> (Result<(), io::Error>) {
 							}
 						}
 						if _failed {
-							eprintln! ("[ww] [def753c5]  `fadvise` failed!")
+							message! (_progress, "[ww] [def753c5]  `fadvise` failed!")
 						}
+					}
+					
+					if let Some (ref _progress) = _progress {
+						_progress.files.inc (1);
+						_progress.data.inc (_size);
 					}
 				}
 				
@@ -407,7 +482,7 @@ pub fn main () -> (Result<(), io::Error>) {
 			.into_iter ();
 	
 	let mut _batch = if _batch_size > 1 {
-		Some (Vec::<(walkdir::DirEntry, (u64, u64))>::with_capacity (_batch_size))
+		Some (Vec::<(walkdir::DirEntry, u64, (u64, u64))>::with_capacity (_batch_size))
 	} else {
 		None
 	};
@@ -421,9 +496,9 @@ pub fn main () -> (Result<(), io::Error>) {
 		
 		if let Some (ref mut _batch) = _batch {
 			if _batch.capacity () == _batch.len () {
-				_batch.sort_by_key (|&(_, _order)| _order);
-				for (_entry, _) in _batch.drain (..) {
-					_enqueue.send (_entry) .unwrap ();
+				_batch.sort_by_key (|&(_, _size, _order)| _order);
+				for (_entry, _size, _) in _batch.drain (..) {
+					_enqueue.send ((_entry, _size)) .unwrap ();
 				}
 			}
 		}
@@ -435,11 +510,11 @@ pub fn main () -> (Result<(), io::Error>) {
 				let mut _sink = _sink.lock () .unwrap ();
 				let _path = _error.path () .unwrap_or (&_source_path);
 				if let Some (_ancestor) = _error.loop_ancestor () {
-					eprintln! ("[ww] [55021f5c]  detected walking loop for `{}` pointing at `{}`;  ignoring!", _path.to_string_lossy (), _ancestor.to_string_lossy ());
+					message! (_progress, "[ww] [55021f5c]  detected walking loop for `{}` pointing at `{}`;  ignoring!", _path.to_string_lossy (), _ancestor.to_string_lossy ());
 					continue;
 				}
 				if _report_errors_to_stderr {
-					eprintln! ("[ee] [a5e88e25]  failed walking path `{}`: `{}`!", _path.to_string_lossy (), _error.io_error () .unwrap_or (&_unknown_error));
+					message! (_progress, "[ee] [a5e88e25]  failed walking path `{}`: `{}`!", _path.to_string_lossy (), _error.io_error () .unwrap_or (&_unknown_error));
 				}
 				if _report_errors_to_sink {
 					let _path_for_sink = if let Some (ref _relative_path) = _relative_path {
@@ -470,7 +545,7 @@ pub fn main () -> (Result<(), io::Error>) {
 				let mut _sink = _sink.lock () .unwrap ();
 				let _path = _error.path () .unwrap_or (&_source_path);
 				if _report_errors_to_stderr {
-					eprintln! ("[ee] [96d2838a]  failed walking path `{}`: `{}`!", _entry.path () .to_string_lossy (), _error.io_error () .unwrap_or (&_unknown_error));
+					message! (_progress, "[ee] [96d2838a]  failed walking path `{}`: `{}`!", _entry.path () .to_string_lossy (), _error.io_error () .unwrap_or (&_unknown_error));
 				}
 				if _report_errors_to_sink {
 					let _path = _entry.path ();
@@ -500,18 +575,25 @@ pub fn main () -> (Result<(), io::Error>) {
 		}
 		
 		if _metadata.is_file () {
+			if let Some (ref _progress) = _progress {
+				_progress.files.inc_length (1);
+				_progress.files.tick ();
+				_progress.data.inc_length (_metadata.size ());
+				_progress.data.tick ();
+			}
+			let _size = _metadata.size ();
 			if let Some (ref mut _batch) = _batch {
 				let _order = (_metadata.dev (), _metadata.ino ());
-				_batch.push ((_entry, _order));
+				_batch.push ((_entry, _size, _order));
 			} else {
-				_enqueue.send (_entry) .unwrap ();
+				_enqueue.send ((_entry, _size)) .unwrap ();
 			}
 		}
 	}
 	
 	if let Some (ref mut _batch) = _batch {
-		for (_entry, _) in _batch.drain (..) {
-			_enqueue.send (_entry) .unwrap ();
+		for (_entry, _size, _) in _batch.drain (..) {
+			_enqueue.send ((_entry, _size)) .unwrap ();
 		}
 	}
 	
@@ -520,6 +602,12 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	
 	_done.wait ();
+	
+	
+	if let Some (ref _progress) = _progress {
+		_progress.files.finish ();
+		_progress.data.finish ();
+	}
 	
 	
 	let _sink = sync::Arc::try_unwrap (_sink) .ok () .expect ("[3d3636b0]");
