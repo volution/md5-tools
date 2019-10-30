@@ -34,6 +34,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	let mut _walk_follow = false;
 	let mut _threads_count = 0 as usize;
 	let mut _queue_size = 0 as usize;
+	let mut _batch_size = 0 as usize;
 	let mut _nice_level = 19 as i8;
 	
 	let mut _ignore_all_errors = false;
@@ -55,6 +56,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		_parser.refer (&mut _walk_follow) .add_option (&["-L", "--follow"], argparse::StoreTrue, "follow symlinks (n.b. arguments are followed)");
 		_parser.refer (&mut _threads_count) .add_option (&["-w", "--workers-count"], argparse::Parse, "hashing workers count (16 by default)");
 		_parser.refer (&mut _queue_size) .add_option (&["--workers-queue"], argparse::Parse, "hashing workers queue size (1024 times workers count by default)");
+		_parser.refer (&mut _batch_size) .add_option (&["--workers-batch"], argparse::Parse, "hashing workers batch size (16 times workers queue size by default)");
 		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "set OS process scheduling priority (i.e. `nice`) (19 by default)");
 		_parser.refer (&mut _io_fadvise) .add_option (&["--fadvise"], argparse::StoreTrue, "use OS `fadvise` with sequential and no-reuse (false by default)");
 		_parser.refer (&mut _ignore_all_errors)
@@ -89,6 +91,9 @@ pub fn main () -> (Result<(), io::Error>) {
 	}
 	if _queue_size == 0 {
 		_queue_size = _threads_count * 1024;
+	}
+	if _batch_size == 0 {
+		_batch_size = _queue_size * 16;
 	}
 	if _ignore_all_errors {
 		_ignore_walk_errors = true;
@@ -401,11 +406,27 @@ pub fn main () -> (Result<(), io::Error>) {
 			.contents_first (true)
 			.into_iter ();
 	
+	let mut _batch = if _batch_size > 1 {
+		Some (Vec::<walkdir::DirEntry>::with_capacity (_batch_size))
+	} else {
+		None
+	};
+	
+	
 	let mut _errors = Vec::<io::Error>::new ();
 	let _unknown_error = io::Error::new (io::ErrorKind::Other, "[31b7b284]  unexpected error");
 	
 	
 	loop {
+		
+		if let Some (ref mut _batch) = _batch {
+			if _batch.capacity () == _batch.len () {
+				_batch.sort_by_key (|_entry| { let _metadata = _entry.metadata () .unwrap (); (_metadata.dev (), _metadata.ino ()) });
+				for _entry in _batch.drain (..) {
+					_enqueue.send (_entry) .unwrap ();
+				}
+			}
+		}
 		
 		let _entry = match _walker.next () {
 			Some (Ok (_entry)) =>
@@ -479,6 +500,16 @@ pub fn main () -> (Result<(), io::Error>) {
 		}
 		
 		if _metadata.is_file () {
+			if let Some (ref mut _batch) = _batch {
+				_batch.push (_entry);
+			} else {
+				_enqueue.send (_entry) .unwrap ();
+			}
+		}
+	}
+	
+	if let Some (ref mut _batch) = _batch {
+		for _entry in _batch.drain (..) {
 			_enqueue.send (_entry) .unwrap ();
 		}
 	}
