@@ -497,7 +497,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		
 		if let Some (ref mut _batch) = _batch {
 			if _batch.capacity () == _batch.len () {
-				_batch.sort_by_key (|&(_, _size, _order)| _order);
+				_batch.sort_by_key (|&(_, _size, (_dev, _inode))| ((_inode / 1024 / 128), (_size / 1024 / 128), _inode));
 				for (_entry, _size, _) in _batch.drain (..) {
 					_enqueue.send ((_entry, _size)) .unwrap ();
 				}
@@ -593,6 +593,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	}
 	
 	if let Some (ref mut _batch) = _batch {
+		_batch.sort_by_key (|&(_, _size, (_dev, _inode))| ((_inode / 1024 / 128), (_size / 1024 / 128), _inode));
 		for (_entry, _size, _) in _batch.drain (..) {
 			_enqueue.send ((_entry, _size)) .unwrap ();
 		}
