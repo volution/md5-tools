@@ -21,6 +21,7 @@ pub struct HashAlgorithm {
 	pub invalid : &'static str,
 	pub invalid_raw : &'static [u8],
 	pub pattern : &'static str,
+	pub suffix : &'static str,
 }
 
 
@@ -33,6 +34,7 @@ pub static MD5 : HashAlgorithm = HashAlgorithm {
 		invalid :      "00000000000000000000000000000000",
 		invalid_raw : b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
 		pattern : r"^(?-u)([0-9a-f]{32}) ([ *])(.+)$",
+		suffix : ".md5",
 	};
 
 
@@ -43,6 +45,7 @@ pub static SHA1 : HashAlgorithm = HashAlgorithm {
 		invalid :      "0000000000000000000000000000000000000000",
 		invalid_raw : b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
 		pattern : r"^(?-u)([0-9a-f]{40}) ([ *])(.+)$",
+		suffix : ".sha1",
 	};
 
 
@@ -53,6 +56,7 @@ pub static SHA2_224 : HashAlgorithm = HashAlgorithm {
 		invalid :      "00000000000000000000000000000000000000000000000000000000",
 		invalid_raw : b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
 		pattern : r"^(?-u)([0-9a-f]{56}) ([ *])(.+)$",
+		suffix : ".sha224",
 	};
 
 pub static SHA2_256 : HashAlgorithm = HashAlgorithm {
@@ -62,6 +66,7 @@ pub static SHA2_256 : HashAlgorithm = HashAlgorithm {
 		invalid :      "0000000000000000000000000000000000000000000000000000000000000000",
 		invalid_raw : b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
 		pattern : r"^(?-u)([0-9a-f]{64}) ([ *])(.+)$",
+		suffix : ".sha256",
 	};
 
 pub static SHA2_384 : HashAlgorithm = HashAlgorithm {
@@ -71,6 +76,7 @@ pub static SHA2_384 : HashAlgorithm = HashAlgorithm {
 		invalid :      "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 		invalid_raw : b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
 		pattern : r"^(?-u)([0-9a-f]{96}) ([ *])(.+)$",
+		suffix : ".sha384",
 	};
 
 pub static SHA2_512 : HashAlgorithm = HashAlgorithm {
@@ -80,6 +86,7 @@ pub static SHA2_512 : HashAlgorithm = HashAlgorithm {
 		invalid :      "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 		invalid_raw : b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
 		pattern : r"^(?-u)([0-9a-f]{128}) ([ *])(.+)$",
+		suffix : ".sha512",
 	};
 
 
@@ -90,6 +97,7 @@ pub static SHA3_224 : HashAlgorithm = HashAlgorithm {
 		invalid :      "00000000000000000000000000000000000000000000000000000000",
 		invalid_raw : b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
 		pattern : r"^(?-u)([0-9a-f]{56}) ([ *])(.+)$",
+		suffix : ".sha3-224",
 	};
 
 pub static SHA3_256 : HashAlgorithm = HashAlgorithm {
@@ -99,6 +107,7 @@ pub static SHA3_256 : HashAlgorithm = HashAlgorithm {
 		invalid :      "0000000000000000000000000000000000000000000000000000000000000000",
 		invalid_raw : b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
 		pattern : r"^(?-u)([0-9a-f]{64}) ([ *])(.+)$",
+		suffix : ".sha3-256",
 	};
 
 pub static SHA3_384 : HashAlgorithm = HashAlgorithm {
@@ -108,6 +117,7 @@ pub static SHA3_384 : HashAlgorithm = HashAlgorithm {
 		invalid :      "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 		invalid_raw : b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
 		pattern : r"^(?-u)([0-9a-f]{96}) ([ *])(.+)$",
+		suffix : ".sha3-384",
 	};
 
 pub static SHA3_512 : HashAlgorithm = HashAlgorithm {
@@ -117,4 +127,6 @@ pub static SHA3_512 : HashAlgorithm = HashAlgorithm {
 		invalid :      "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
 		invalid_raw : b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
 		pattern : r"^(?-u)([0-9a-f]{128}) ([ *])(.+)$",
+		suffix : ".sha3-512",
 	};
+

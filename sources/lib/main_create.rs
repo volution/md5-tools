@@ -157,22 +157,33 @@ pub fn main () -> (Result<(), io::Error>) {
 		} else {
 			match fs::metadata (&_source_path) {
 				Ok (ref _stat) if _stat.is_dir () => {
-					let _output_path_base = _source_path.join (".md5");
-					match fs::metadata (&_output_path_base) {
-						Ok (ref _stat) if _stat.is_dir () =>
-							Some ((_output_path_base, Some (true))),
-						Ok (ref _stat) if _stat.is_file () =>
-							Some ((_output_path_base, Some (false))),
-						Ok (_) =>
-							return Err (io::Error::new (io::ErrorKind::Other, "[2cb4982d]  invalid `.md5` path (non file or folder)")),
-						Err (ref _error) if _error.kind () == io::ErrorKind::NotFound => {
-							let mut _output_path = ffi::OsString::from (&_source_path);
-							_output_path.push (path::MAIN_SEPARATOR.to_string ());
-							_output_path.push (".");
-							Some ((_output_path.into (), Some (false)))
-						},
-						Err (_error) =>
-							return Err (_error),
+					let mut _outcome = None;
+					for _suffix in &[_hashes_flags.algorithm.suffix, ".hashes", ".md5"] {
+						let _output_path_base = _source_path.join (_suffix);
+						match fs::metadata (&_output_path_base) {
+							Ok (ref _stat) if _stat.is_dir () => {
+								_outcome = Some (Some ((_output_path_base, Some (true))));
+								break;
+							},
+							Ok (ref _stat) if _stat.is_file () => {
+								_outcome = Some (Some ((_output_path_base, Some (false))));
+								break;
+							},
+							Ok (_) =>
+								return Err (io::Error::new (io::ErrorKind::Other, "[2cb4982d]  invalid hashes path (non file or folder)")),
+							Err (ref _error) if _error.kind () == io::ErrorKind::NotFound =>
+								(),
+							Err (_error) =>
+								return Err (_error),
+						}
+					}
+					if let Some (_outcome) = _outcome {
+						_outcome
+					} else {
+						let mut _output_path = ffi::OsString::from (&_source_path);
+						_output_path.push (path::MAIN_SEPARATOR.to_string ());
+						_output_path.push (".");
+						Some ((_output_path.into (), Some (false)))
 					}
 				},
 				Ok (ref _stat) if _stat.is_file () =>
@@ -193,8 +204,7 @@ pub fn main () -> (Result<(), io::Error>) {
 				Some (_output_path),
 			Some ((_output_path_base, Some (_transformer))) => {
 				
-				// FIXME:  Add support for proper suffix!
-				let _output_path_suffix = ".md5";
+				let _output_path_suffix = _hashes_flags.algorithm.suffix;
 				
 				let _output_timestamp = {
 					
