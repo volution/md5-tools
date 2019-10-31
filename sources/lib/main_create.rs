@@ -283,7 +283,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	let _sink = sync::Arc::new (sync::Mutex::new (_sink));
 	
 	
-	let (_enqueue, _dequeue) = crossbeam::channel::bounded::<(walkdir::DirEntry, u64)> (_queue_size);
+	let (_enqueue, _dequeue) = crossbeam::channel::bounded::<(walkdir::DirEntry, fs::Metadata)> (_queue_size);
 	let mut _completions = Vec::with_capacity (_threads_count);
 	let _threads_errors = sync::Arc::new (sync::Mutex::new (Vec::new ()));
 	let _done = crossbeam::sync::WaitGroup::new ();
@@ -367,9 +367,9 @@ pub fn main () -> (Result<(), io::Error>) {
 				
 				loop {
 					
-					let (_entry, _size) = match _dequeue.recv () {
-						Ok (_entry) =>
-							_entry,
+					let (_entry, _metadata) = match _dequeue.recv () {
+						Ok (_payload) =>
+							_payload,
 						Err (crossbeam::channel::RecvError) =>
 							break,
 					};
@@ -462,7 +462,7 @@ pub fn main () -> (Result<(), io::Error>) {
 					
 					if let Some (ref _progress) = _progress {
 						_progress.files.inc (1);
-						_progress.data.inc (_size);
+						_progress.data.inc (_metadata.size ());
 					}
 				}
 				
@@ -482,8 +482,12 @@ pub fn main () -> (Result<(), io::Error>) {
 			.contents_first (true)
 			.into_iter ();
 	
+	
+	#[ derive (Copy, Clone, Eq, Ord, PartialEq, PartialOrd) ]
+	struct DirEntryOrder (u64, u64, u64);
+	
 	let mut _batch = if _batch_size > 1 {
-		Some (Vec::<(walkdir::DirEntry, u64, (u64, u64))>::with_capacity (_batch_size))
+		Some (Vec::<(walkdir::DirEntry, fs::Metadata, DirEntryOrder)>::with_capacity (_batch_size))
 	} else {
 		None
 	};
@@ -497,7 +501,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		
 		if let Some (ref mut _batch) = _batch {
 			if _batch.capacity () == _batch.len () {
-				_batch.sort_by_key (|&(_, _size, (_dev, _inode))| ((_inode / 1024 / 128), (_size / 1024 / 128), _inode));
+				_batch.sort_by_key (|&(_, _, _order)| _order);
 				for (_entry, _size, _) in _batch.drain (..) {
 					_enqueue.send ((_entry, _size)) .unwrap ();
 				}
@@ -576,26 +580,38 @@ pub fn main () -> (Result<(), io::Error>) {
 		}
 		
 		if _metadata.is_file () {
+			
 			if let Some (ref _progress) = _progress {
 				_progress.files.inc_length (1);
 				_progress.files.tick ();
 				_progress.data.inc_length (_metadata.size ());
 				_progress.data.tick ();
 			}
-			let _size = _metadata.size ();
+			
 			if let Some (ref mut _batch) = _batch {
-				let _order = (_metadata.dev (), _metadata.ino ());
-				_batch.push ((_entry, _size, _order));
+				
+				let _order = {
+					let _dev = _metadata.dev ();
+					let _inode = _metadata.ino ();
+					let _size = _metadata.blocks () * 512;
+					let _order_1 = _inode / 1024 / 128;
+					let _order_2 = _size / 1024 / 128;
+					let _order_3 = _inode;
+					DirEntryOrder (_order_1, _order_2, _order_3)
+				};
+				
+				_batch.push ((_entry, _metadata, _order));
+				
 			} else {
-				_enqueue.send ((_entry, _size)) .unwrap ();
+				_enqueue.send ((_entry, _metadata)) .unwrap ();
 			}
 		}
 	}
 	
 	if let Some (ref mut _batch) = _batch {
-		_batch.sort_by_key (|&(_, _size, (_dev, _inode))| ((_inode / 1024 / 128), (_size / 1024 / 128), _inode));
-		for (_entry, _size, _) in _batch.drain (..) {
-			_enqueue.send ((_entry, _size)) .unwrap ();
+		_batch.sort_by_key (|&(_, _, _order)| _order);
+		for (_entry, _metadata, _) in _batch.drain (..) {
+			_enqueue.send ((_entry, _metadata)) .unwrap ();
 		}
 	}
 	
