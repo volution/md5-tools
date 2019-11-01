@@ -483,9 +483,6 @@ pub fn main () -> (Result<(), io::Error>) {
 			.into_iter ();
 	
 	
-	#[ derive (Copy, Clone, Eq, Ord, PartialEq, PartialOrd) ]
-	struct DirEntryOrder (u64, u64, u64);
-	
 	let mut _batch = if _batch_size > 1 {
 		Some (Vec::<(walkdir::DirEntry, fs::Metadata, DirEntryOrder)>::with_capacity (_batch_size))
 	} else {
@@ -589,19 +586,8 @@ pub fn main () -> (Result<(), io::Error>) {
 			}
 			
 			if let Some (ref mut _batch) = _batch {
-				
-				let _order = {
-					let _dev = _metadata.dev ();
-					let _inode = _metadata.ino ();
-					let _size = _metadata.blocks () * 512;
-					let _order_1 = _inode / 1024 / 128;
-					let _order_2 = _size / 1024 / 128;
-					let _order_3 = _inode;
-					DirEntryOrder (_order_1, _order_2, _order_3)
-				};
-				
+				let _order = entry_order (&_entry, &_metadata);
 				_batch.push ((_entry, _metadata, _order));
-				
 			} else {
 				_enqueue.send ((_entry, _metadata)) .unwrap ();
 			}
@@ -673,5 +659,21 @@ pub fn main_0 () -> ! {
 	} else {
 		process::exit (0);
 	}
+}
+
+
+
+
+#[ derive (Copy, Clone, Eq, Ord, PartialEq, PartialOrd) ]
+struct DirEntryOrder (u64, u64, u64);
+
+fn entry_order (_entry : & walkdir::DirEntry, _metadata : & fs::Metadata) -> (DirEntryOrder) {
+	let _dev = _metadata.dev ();
+	let _inode = _metadata.ino ();
+	let _size = _metadata.blocks () * 512;
+	let _order_1 = _inode / 1024 / 128;
+	let _order_2 = _size / 1024 / 128;
+	let _order_3 = _inode;
+	DirEntryOrder (_order_1, _order_2, _order_3)
 }
 
