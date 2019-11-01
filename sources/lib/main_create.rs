@@ -146,7 +146,29 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	
 	
-	let _output_path = if _output_path == path::Path::new ("-") {
+	let _output_descriptor = if
+			if _output_path == path::Path::new ("-") {
+				_output_path = path::PathBuf::from ("/dev/stdout");
+				true
+			} else if _output_path == path::Path::new ("/dev/stdout") {
+				true
+			} else if _output_path == path::Path::new ("/dev/stderr") {
+				true
+			} else if _output_path == path::Path::new ("/dev/null") {
+				true
+			} else if
+					_output_path.starts_with (path::Path::new ("/dev/fd")) ||
+					_output_path.starts_with (path::Path::new ("/proc/self/fd")) {
+				true
+			} else if
+					_output_path.starts_with (path::Path::new ("/dev")) ||
+					_output_path.starts_with (path::Path::new ("/proc")) ||
+					_output_path.starts_with (path::Path::new ("/sys")) {
+				return Err (io::Error::new (io::ErrorKind::Other, "[49b2e473]  invalid output path"));
+			} else {
+				false
+			}
+	{
 		None
 		
 	} else {
@@ -154,13 +176,13 @@ pub fn main () -> (Result<(), io::Error>) {
 		let _output_path_with_transformer = if _output_path != path::Path::new (".") {
 			match fs::metadata (&_output_path) {
 				Ok (ref _stat) if _stat.is_dir () =>
-					Some ((_output_path, Some (true))),
+					Some ((_output_path.clone (), Some (true))),
 				Ok (ref _stat) if _stat.is_file () =>
 					return Err (io::Error::new (io::ErrorKind::Other, "[b4ab81b9]  invalid output path (already exists)")),
 				Ok (_) =>
 					return Err (io::Error::new (io::ErrorKind::Other, "[8366e424]  invalid output path (non file or folder)")),
 				Err (ref _error) if _error.kind () == io::ErrorKind::NotFound =>
-					Some ((_output_path, None)),
+					Some ((_output_path.clone (), None)),
 				Err (_error) =>
 					return Err (_error),
 			}
@@ -250,7 +272,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		}
 	};
 	
-	let _output_path_and_tmp = if let Some (_output_path) = _output_path {
+	let _output_path_and_tmp = if let Some (_output_path) = _output_descriptor {
 		let mut _output_path_tmp = ffi::OsString::from (&_output_path);
 		_output_path_tmp.push (".tmp");
 		let _output_path_tmp = path::PathBuf::from (_output_path_tmp);
@@ -271,10 +293,10 @@ pub fn main () -> (Result<(), io::Error>) {
 		let _output_stat = _output_file.metadata () ?;
 		(_output_file, Some (_output_stat))
 	} else {
-		let _output_file = fs::OpenOptions::new () .write (true) .open ("/dev/stdout") ?;
-		if atty::is (atty::Stream::Stdout) {
+		if _output_path == path::Path::new ("/dev/stdout") && atty::is (atty::Stream::Stdout) {
 			_progress = false;
 		}
+		let _output_file = fs::OpenOptions::new () .write (true) .open (_output_path) ?;
 		(_output_file, None)
 	};
 	
