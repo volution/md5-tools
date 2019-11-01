@@ -3,61 +3,51 @@
 
 
 
-<< run / md5-create / debug
+:: run / md5-create / debug :: exec -- "${ZRUN[@]}" ':: run / rust / debug' md5-create "${@}"
+:: run / md5-diff / debug :: exec -- "${ZRUN[@]}" ':: run / rust / debug' md5-diff "${@}"
+:: run / md5-cpio / debug :: exec -- "${ZRUN[@]}" ':: run / rust / debug' md5-cpio "${@}"
+
+:: run / md5-create / release :: exec -- "${ZRUN[@]}" ':: run / rust / release' md5-create "${@}"
+:: run / md5-diff / release :: exec -- "${ZRUN[@]}" ':: run / rust / release' md5-diff "${@}"
+:: run / md5-cpio / release :: exec -- "${ZRUN[@]}" ':: run / rust / release' md5-cpio "${@}"
+
+
+
+
+:: build / md5-create / debug :: exec -- "${ZRUN[@]}" ':: build / rust / debug' --bin md5-create "${@}"
+:: build / md5-diff / debug :: exec -- "${ZRUN[@]}" ':: build / rust / debug' --bin md5-diff "${@}"
+:: build / md5-cpio / debug :: exec -- "${ZRUN[@]}" ':: build / rust / debug' --bin md5-cpio "${@}"
+
+:: build / md5-create / release :: exec -- "${ZRUN[@]}" ':: build / rust / release' --bin md5-create "${@}"
+:: build / md5-diff / release :: exec -- "${ZRUN[@]}" ':: build / rust / release' --bin md5-diff "${@}"
+:: build / md5-cpio / release :: exec -- "${ZRUN[@]}" ':: build / rust / release' --bin md5-cpio "${@}"
+
+
+
+
+--<< run / rust / debug
+	test "${#}" -ge 1
+	_binary="${1}"
+	shift -- 1
 	export -- CARGO_TARGET="${CARGO_TARGET:-x86_64-unknown-linux-gnu}"
-	"${ZRUN[@]}" ':: build / rust / debug' --bin md5-create --quiet
+	"${ZRUN[@]}" ':: build / rust / debug' --bin "${_binary}" --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		"./target/${CARGO_TARGET}/debug/md5-create" "${@}" \
+		"./target/${CARGO_TARGET}/debug/${_binary}" "${@}" \
 	#
 !!
 
-<< run / md5-create / release
-	"${ZRUN[@]}" ':: build / rust / release' --bin md5-create --quiet
-	exec -- \
-		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		"./target/${CARGO_TARGET}/release/md5-create" "${@}" \
-	#
-!!
-
-
-
-
-<< run / md5-diff / debug
+--<< run / rust / release
+	test "${#}" -ge 1
+	_binary="${1}"
+	shift -- 1
 	export -- CARGO_TARGET="${CARGO_TARGET:-x86_64-unknown-linux-gnu}"
-	"${ZRUN[@]}" ':: build / rust / debug' --bin md5-diff --quiet
+	"${ZRUN[@]}" ':: build / rust / release' --bin "${_binary}" --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		"./target/${CARGO_TARGET}/debug/md5-diff" "${@}" \
+		"./target/${CARGO_TARGET}/release/${_binary}" "${@}" \
 	#
-!!
-
-<< run / md5-diff / release
-	"${ZRUN[@]}" ':: build / rust / release' --bin md5-diff --quiet
-	exec -- \
-		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		"./target/${CARGO_TARGET}/release/md5-diff" "${@}" \
-	#
-!!
-
-
-
-
-<< run / md5-cpio / debug
-	export -- CARGO_TARGET="${CARGO_TARGET:-x86_64-unknown-linux-gnu}"
-	"${ZRUN[@]}" ':: build / rust / debug' --bin md5-cpio --quiet
-	exec -- \
-		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		"./target/${CARGO_TARGET}/debug/md5-cpio" "${@}" \
-	#
-!!
-
-<< run / md5-cpio / release
-	"${ZRUN[@]}" ':: build / rust / release' --bin md5-cpio --quiet
-	exec -- \
-		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		"./target/${CARGO_TARGET}/release/md5-cpio" "${@}" \
-	#
+	
 !!
 
 
@@ -75,6 +65,7 @@
 !!
 
 --<< build / rust
+	export -- CARGO_TARGET="${CARGO_TARGET:-x86_64-unknown-linux-gnu}"
 	exec -- "${ZRUN[@]}" ':: workbench / cargo / run' \
 			build \
 			--target "${CARGO_TARGET}" \
@@ -85,28 +76,28 @@
 
 
 
-<< run / md5-diff-go
-	"${ZRUN[@]}" ':: build / md5-diff-go'
+<< run / go / md5-diff
+	"${ZRUN[@]}" ':: build / go / md5-diff'
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
 		./target/go/md5-diff "${@}" \
 	#
 !!
 
-<< build / md5-diff-go
+<< build / go / md5-diff
 	exec -- "${ZRUN[@]}" ':: build / go' md5-diff
 !!
 
 
-<< run / md5-copy-go
-	"${ZRUN[@]}" ':: build / md5-copy-go'
+<< run / go / md5-copy
+	"${ZRUN[@]}" ':: build / go / md5-copy'
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
 		./target/go/md5-copy "${@}" \
 	#
 !!
 
-<< build / md5-copy-go
+<< build / go / md5-copy
 	exec -- "${ZRUN[@]}" ':: build / go' md5-copy
 !!
 
