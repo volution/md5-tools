@@ -97,7 +97,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	let _batch_order = match _batch_order.as_str () {
 		"index" | "walk" =>
 			DirEntryOrderKind::Index,
-		"inode" =>
+		"inode" | "" =>
 			DirEntryOrderKind::Inode,
 		"inode-and-size" =>
 			DirEntryOrderKind::InodeAndSizeBuckets,
