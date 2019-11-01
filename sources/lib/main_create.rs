@@ -47,26 +47,36 @@ pub fn main () -> (Result<(), io::Error>) {
 	let mut _ignore_read_errors = false;
 	let mut _report_errors_to_sink = true;
 	let mut _report_errors_to_stderr = true;
-	let mut _io_fadvise = false;
+	let mut _io_fadvise = true;
 	
 	{
 		let mut _parser = argparse::ArgumentParser::new ();
+		
+		_parser.refer (&mut _source_path) .add_argument ("source", argparse::Parse, "source file or folder") .required ();
+		_parser.refer (&mut _output_path) .add_option (&["-o", "--output"], argparse::Parse, "output file (use `-` for `stdout`, and `.` for auto-detection) (`.` by default)");
+		
 		_hashes_flags.argparse (&mut _parser);
+		
 		_format_flags.argparse (&mut _parser);
-		_parser.refer (&mut _progress)
-				.add_option (&["--progress"], argparse::StoreTrue, "enable progress bar (true by default)")
-				.add_option (&["--no-progress"], argparse::StoreFalse, "disable progress bar");
+		
 		_parser.refer (&mut _relative)
 				.add_option (&["--relative"], argparse::StoreTrue, "output paths relative to source (true by default)")
 				.add_option (&["--no-relative"], argparse::StoreFalse, "do not output paths relative to source");
+		
 		_parser.refer (&mut _walk_xdev) .add_option (&["-x", "--xdev"], argparse::StoreTrue, "do not cross mount points");
 		_parser.refer (&mut _walk_follow) .add_option (&["-L", "--follow"], argparse::StoreTrue, "follow symlinks (n.b. arguments are followed)");
-		_parser.refer (&mut _threads_count) .add_option (&["-w", "--workers-count"], argparse::Parse, "hashing workers count (4 by default)");
+		
+		_parser.refer (&mut _threads_count) .add_option (&["-w", "--workers-count"], argparse::Parse, "hashing workers count (16 by default)");
 		_parser.refer (&mut _queue_size) .add_option (&["--workers-queue"], argparse::Parse, "hashing workers queue size (4096 times the workers count by default)");
-		_parser.refer (&mut _batch_size) .add_option (&["--workers-batch"], argparse::Parse, "hashing workers batch size (1/4 times the workers queue size by default)");
+		_parser.refer (&mut _batch_size) .add_option (&["--workers-batch"], argparse::Parse, "hashing workers batch size (half the workers queue size by default)");
 		_parser.refer (&mut _batch_order) .add_option (&["--workers-sort"], argparse::Parse, "hashing workers batch sorting (by inode by default)");
+		
+		_parser.refer (&mut _io_fadvise)
+				.add_option (&["--fadvise"], argparse::StoreTrue, "use OS `fadvise` with sequential and no-reuse (true by default)")
+				.add_option (&["--no-fadvise"], argparse::StoreFalse, "do not use OS `fadvise`;");
+		
 		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "set OS process scheduling priority (i.e. `nice`) (19 by default)");
-		_parser.refer (&mut _io_fadvise) .add_option (&["--fadvise"], argparse::StoreTrue, "use OS `fadvise` with sequential and no-reuse (false by default)");
+		
 		_parser.refer (&mut _ignore_all_errors)
 				.add_option (&["--ignore-all-errors"], argparse::StoreTrue, "ignore all errors (false by default)");
 		_parser.refer (&mut _ignore_walk_errors)
@@ -81,8 +91,11 @@ pub fn main () -> (Result<(), io::Error>) {
 		_parser.refer (&mut _report_errors_to_stderr)
 				.add_option (&["--errors-to-stderr"], argparse::StoreTrue, "on errors report a message (true by default)")
 				.add_option (&["--no-errors-to-stderr"], argparse::StoreFalse, "on errors report a message");
-		_parser.refer (&mut _output_path) .add_option (&["-o", "--output"], argparse::Parse, "output file (use `-` for `stdout`, and `.` for auto-detection) (`.` by default)");
-		_parser.refer (&mut _source_path) .add_argument ("source", argparse::Parse, "source file or folder") .required ();
+		
+		_parser.refer (&mut _progress)
+				.add_option (&["--progress"], argparse::StoreTrue, "enable progress bar (true by default)")
+				.add_option (&["--no-progress"], argparse::StoreFalse, "disable progress bar");
+		
 		_parser.parse_args_or_exit ();
 	}
 	
@@ -110,13 +123,13 @@ pub fn main () -> (Result<(), io::Error>) {
 	};
 	
 	if _threads_count == 0 {
-		_threads_count = 4;
+		_threads_count = 16;
 	}
 	if _queue_size == 0 {
 		_queue_size = _threads_count * 1024 * 4;
 	}
 	if _batch_size == 0 {
-		_batch_size = _queue_size / 4;
+		_batch_size = _queue_size / 2;
 	}
 	if _ignore_all_errors {
 		_ignore_walk_errors = true;
