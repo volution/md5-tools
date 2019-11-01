@@ -690,12 +690,21 @@ pub fn main_0 () -> ! {
 struct DirEntryOrder (u64, u64, u64);
 
 fn entry_order (_entry : & walkdir::DirEntry, _metadata : & fs::Metadata) -> (DirEntryOrder) {
+	
 	let _dev = _metadata.dev ();
 	let _inode = _metadata.ino ();
-	let _size = _metadata.blocks () * 512;
-	let _order_1 = _inode / 1024 / 128;
-	let _order_2 = _size / 1024 / 128;
-	let _order_3 = _inode;
+	let _blocks = _metadata.blocks () * 512 / _metadata.blksize ();
+	
+	// NOTE:  First group files based on inode (regardless of device).
+	let _order_1 = _inode / (1024 * 128);
+	
+	// NOTE:  Then group files based on log2 actual used file-system blocks.
+	let _order_2 = (64 - _blocks.leading_zeros ()) as u64;
+	
+	// NOTE:  Then order files by inode and then based on device.
+	//   (This doesn't perfectly distributes files from different devices, but we try...)
+	let _order_3 = (_inode % (1024 * 128) << 32) | ((_dev >> 32) ^ (_dev & 0xffffffff));
+	
 	DirEntryOrder (_order_1, _order_2, _order_3)
 }
 
