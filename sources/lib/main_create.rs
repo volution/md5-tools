@@ -38,6 +38,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	let mut _threads_count = 0 as usize;
 	let mut _queue_size = 0 as usize;
 	let mut _batch_size = 0 as usize;
+	let mut _batch_order = String::from ("");
 	let mut _nice_level = 19 as i8;
 	
 	let mut _ignore_all_errors = false;
@@ -63,6 +64,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		_parser.refer (&mut _threads_count) .add_option (&["-w", "--workers-count"], argparse::Parse, "hashing workers count (4 by default)");
 		_parser.refer (&mut _queue_size) .add_option (&["--workers-queue"], argparse::Parse, "hashing workers queue size (4096 times the workers count by default)");
 		_parser.refer (&mut _batch_size) .add_option (&["--workers-batch"], argparse::Parse, "hashing workers batch size (1/4 times the workers queue size by default)");
+		_parser.refer (&mut _batch_order) .add_option (&["--workers-sort"], argparse::Parse, "hashing workers batch sorting (by inode by default)");
 		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "set OS process scheduling priority (i.e. `nice`) (19 by default)");
 		_parser.refer (&mut _io_fadvise) .add_option (&["--fadvise"], argparse::StoreTrue, "use OS `fadvise` with sequential and no-reuse (false by default)");
 		_parser.refer (&mut _ignore_all_errors)
@@ -91,6 +93,21 @@ pub fn main () -> (Result<(), io::Error>) {
 	if _source_path == path::Path::new ("") {
 		_source_path = path::PathBuf::from (".");
 	}
+	
+	let _batch_order = match _batch_order.as_str () {
+		"index" | "walk" =>
+			DirEntryOrderKind::Index,
+		"inode" =>
+			DirEntryOrderKind::Inode,
+		"inode-and-size" =>
+			DirEntryOrderKind::InodeAndSizeBuckets,
+		"extent" =>
+			DirEntryOrderKind::Extent,
+		"random" =>
+			DirEntryOrderKind::Random,
+		_ =>
+			return Err (io::Error::new (io::ErrorKind::Other, "[3046e5fa]  invalid batch sorting")),
+	};
 	
 	if _threads_count == 0 {
 		_threads_count = 4;
@@ -324,7 +341,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		let _files = indicatif::ProgressBar::new (0);
 		_files.set_style (
 				indicatif::ProgressStyle::default_bar ()
-					.template("| {elapsed_precise} | {wide_bar} | {len:>10} | {per_sec:>10} | {percent:>3}% |")
+					.template("| {elapsed_precise} | {wide_bar} | {per_sec:>10} | {pos:>10} | {len:>10} | {percent:>3}% |")
 					.progress_chars("=>-")
 			);
 		_files.set_draw_delta (100);
@@ -333,7 +350,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		let _data = indicatif::ProgressBar::new (0);
 		_data.set_style (
 				indicatif::ProgressStyle::default_bar ()
-					.template("| {eta_precise} | {wide_bar} | {total_bytes:>10} | {bytes_per_sec:>10} | {percent:>3}% |")
+					.template("| {eta_precise} | {wide_bar} | {bytes_per_sec:>10} | {bytes:>10} | {total_bytes:>10} | {percent:>3}% |")
 					.progress_chars("=>-")
 			);
 		_data.set_draw_delta (1024 * 1024);
@@ -504,6 +521,8 @@ pub fn main () -> (Result<(), io::Error>) {
 			.contents_first (true)
 			.into_iter ();
 	
+	let mut _walk_index = 0 as u64;
+	
 	
 	let mut _batch = if _batch_size > 1 {
 		Some (Vec::<(walkdir::DirEntry, fs::Metadata, DirEntryOrder)>::with_capacity (_batch_size))
@@ -517,6 +536,8 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	
 	loop {
+		
+		_walk_index += 1;
 		
 		if let Some (ref mut _batch) = _batch {
 			if _batch.capacity () == _batch.len () {
@@ -608,7 +629,7 @@ pub fn main () -> (Result<(), io::Error>) {
 			}
 			
 			if let Some (ref mut _batch) = _batch {
-				let _order = entry_order (&_entry, &_metadata);
+				let _order = entry_order (&_entry, &_metadata, _walk_index, _batch_order);
 				_batch.push ((_entry, _metadata, _order));
 			} else {
 				_enqueue.send ((_entry, _metadata)) .unwrap ();
@@ -689,7 +710,33 @@ pub fn main_0 () -> ! {
 #[ derive (Copy, Clone, Eq, Ord, PartialEq, PartialOrd) ]
 struct DirEntryOrder (u64, u64, u64);
 
-fn entry_order (_entry : & walkdir::DirEntry, _metadata : & fs::Metadata) -> (DirEntryOrder) {
+#[ derive (Copy, Clone, Eq, Ord, PartialEq, PartialOrd) ]
+enum DirEntryOrderKind {
+	Index,
+	Inode,
+	InodeAndSizeBuckets,
+	Extent,
+	Random,
+}
+
+
+fn entry_order (_entry : & walkdir::DirEntry, _metadata : & fs::Metadata, _index : u64, _kind : DirEntryOrderKind) -> (DirEntryOrder) {
+	match _kind {
+		DirEntryOrderKind::Index =>
+			DirEntryOrder (_index, 0, 0),
+		DirEntryOrderKind::Inode =>
+			DirEntryOrder (_metadata.ino (), 0, 0),
+		DirEntryOrderKind::InodeAndSizeBuckets =>
+			return entry_order_by_inode (_entry, _metadata, _index),
+		DirEntryOrderKind::Extent =>
+			return entry_order_by_extent (_entry, _metadata, _index),
+		DirEntryOrderKind::Random =>
+			return entry_order_by_hash (_entry, _metadata, _index),
+	}
+}
+
+
+fn entry_order_by_inode (_entry : & walkdir::DirEntry, _metadata : & fs::Metadata, _index : u64) -> (DirEntryOrder) {
 	
 	let _dev = _metadata.dev ();
 	let _inode = _metadata.ino ();
@@ -706,5 +753,104 @@ fn entry_order (_entry : & walkdir::DirEntry, _metadata : & fs::Metadata) -> (Di
 	let _order_3 = (_inode % (1024 * 128) << 32) | ((_dev >> 32) ^ (_dev & 0xffffffff));
 	
 	DirEntryOrder (_order_1, _order_2, _order_3)
+}
+
+
+fn entry_order_by_hash (_entry : & walkdir::DirEntry, _metadata : & fs::Metadata, _index : u64) -> (DirEntryOrder) {
+	#[ allow (deprecated) ]
+	let mut _hasher = hash::SipHasher::new ();
+	_hasher.write_u64 (_metadata.dev ());
+	_hasher.write_u64 (_metadata.ino ());
+	_hasher.write_u64 (_metadata.size ());
+	let _order = _hasher.finish ();
+	DirEntryOrder (_order, 0, 0)
+}
+
+
+
+
+#[ allow (dead_code) ]
+fn entry_order_by_extent (_entry : & walkdir::DirEntry, _metadata : & fs::Metadata, _index : u64) -> (DirEntryOrder) {
+	
+	
+	// NOTE:  See also:  https://www.kernel.org/doc/Documentation/filesystems/fiemap.txt
+	// NOTE:  Inspired by: https://github.com/lilydjwg/fiemap-rs/blob/master/fiemap/src/lib.rs
+	
+	
+	#[ repr (C) ]
+	#[ derive (Default) ]
+	struct fiemap {
+		fm_start: u64,
+		fm_length: u64,
+		fm_flags: u32,
+		fm_mapped_extents: u32,
+		fm_extent_count: u32,
+		fm_reserved: u32,
+		fm_extents: [fiemap_extent; 1],
+	}
+	
+	#[repr (C) ]
+	#[ derive (Default) ]
+	struct fiemap_extent {
+		fe_logical: u64,
+		fe_physical: u64,
+		fe_length: u64,
+		fe_reserved64: [u64; 2],
+		fe_flags: u32,
+		fe_reserved: [u32; 3],
+	}
+	
+	const FS_IOC_FIEMAP : libc::c_ulong = 0xC020660B;
+	
+	const FIEMAP_FLAG_SYNC  : u32 = 0x00000001;
+	const FIEMAP_FLAG_XATTR : u32 = 0x00000002;
+	const FIEMAP_FLAG_CACHE : u32 = 0x00000004;
+	
+	const FIEMAP_EXTENT_LAST           : u32 = 0x00000001;
+	const FIEMAP_EXTENT_UNKNOWN        : u32 = 0x00000002;
+	const FIEMAP_EXTENT_DELALLOC       : u32 = 0x00000004;
+	const FIEMAP_EXTENT_ENCODED        : u32 = 0x00000008;
+	const FIEMAP_EXTENT_DATA_ENCRYPTED : u32 = 0x00000080;
+	const FIEMAP_EXTENT_NOT_ALIGNED    : u32 = 0x00000100;
+	const FIEMAP_EXTENT_DATA_INLINE    : u32 = 0x00000200;
+	const FIEMAP_EXTENT_DATA_TAIL      : u32 = 0x00000400;
+	const FIEMAP_EXTENT_UNWRITTEN      : u32 = 0x00000800;
+	const FIEMAP_EXTENT_MERGED         : u32 = 0x00001000;
+	const FIEMAP_EXTENT_SHARED         : u32 = 0x00002000;
+	
+	
+	let mut _fiemap : fiemap = Default::default ();
+	_fiemap.fm_length = 1;
+	_fiemap.fm_extent_count = 1;
+	
+	let _path = ffi::CString::new (_entry.path () .as_os_str () .as_bytes ()) .unwrap ();
+	
+	let _succeeded = unsafe {
+		let mut _succeeded = true;
+		let _file = libc::open (_path.as_ptr (), libc::O_RDONLY | libc::O_NOFOLLOW);
+		if _file < 0 {
+			_succeeded = false;
+		}
+		if _succeeded {
+			_succeeded = libc::ioctl (_file, FS_IOC_FIEMAP, &mut _fiemap as *mut _) == 0;
+		}
+		if _file >= 0 {
+			_succeeded = libc::close (_file) == 0;
+		}
+		_succeeded
+	};
+	
+	if !_succeeded {
+		DirEntryOrder (0, _metadata.ino (), 0)
+	} else if _fiemap.fm_mapped_extents == 1 {
+		if (_fiemap.fm_extents[0].fe_flags & FIEMAP_EXTENT_UNKNOWN) == 0 {
+			let _block = _fiemap.fm_extents[0].fe_physical;
+			DirEntryOrder (3 + _block, 0, 0)
+		} else {
+			DirEntryOrder (2, _metadata.ino (), 0)
+		}
+	} else {
+		DirEntryOrder (1, _metadata.ino (), 0)
+	}
 }
 

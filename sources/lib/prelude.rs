@@ -5,8 +5,10 @@
 
 pub(crate) use ::std::cmp;
 pub(crate) use ::std::env;
+pub(crate) use ::std::default;
 pub(crate) use ::std::ffi;
 pub(crate) use ::std::fs;
+pub(crate) use ::std::hash;
 pub(crate) use ::std::io;
 pub(crate) use ::std::path;
 pub(crate) use ::std::process;
@@ -19,6 +21,7 @@ pub(crate) use ::std::option::{Option::Some, Option::None};
 pub(crate) use ::std::result::{Result, Result::Ok, Result::Err};
 
 
+pub(crate) use ::std::default::Default;
 pub(crate) use ::std::mem::drop;
 pub(crate) use ::std::borrow::Cow;
 pub(crate) use ::std::rc::Rc;
@@ -39,6 +42,7 @@ pub(crate) use ::std::clone::Clone as _;
 pub(crate) use ::std::convert::AsRef as _;
 pub(crate) use ::std::convert::From as _;
 pub(crate) use ::std::convert::Into as _;
+pub(crate) use ::std::hash::Hasher as _;
 pub(crate) use ::std::io::BufRead as _;
 pub(crate) use ::std::io::Read as _;
 pub(crate) use ::std::io::Write as _;
