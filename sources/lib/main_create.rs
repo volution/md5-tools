@@ -356,6 +356,10 @@ pub fn main () -> (Result<(), io::Error>) {
 		data : indicatif::ProgressBar,
 	}
 	
+	if ! atty::is (atty::Stream::Stderr) {
+		_progress = false;
+	}
+	
 	let _progress = if _progress {
 		
 		let _folder = indicatif::ProgressBar::new (!0);
