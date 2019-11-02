@@ -184,10 +184,14 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string) (
 	
 	if _stat, _error := os.Lstat (_sourceFile); _error == nil {
 		if ! _stat.Mode () .IsRegular () {
-			panic (fmt.Sprintf ("[6ffb7ba4]  invalid source file (non file) `%s`", _sourceFile))
+			fmt.Fprintf (os.Stderr, "[ee] [6ffb7ba4]  invalid source file (non file) `%s`;  ignoring!\n", _sourceFile)
+			return
+		} else {
+			// NOP
 		}
 	} else if os.IsNotExist (_error) {
-		panic (fmt.Sprintf ("[4099f6dc]  invalid source file (not found) `%s`", _sourceFile))
+		fmt.Fprintf (os.Stderr, "[ee] [6cf84aa8]  invalid source file (not found) `%s`;  ignoring!\n", _sourceFile)
+		return
 	} else {
 		panic (_error)
 	}
