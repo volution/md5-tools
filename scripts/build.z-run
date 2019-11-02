@@ -117,3 +117,37 @@
 	#
 !!
 
+
+
+
+<< publish
+	test "${#}" -eq 0
+	if test -e ./target/publish ; then
+		rm -R ./target/publish
+	fi
+	mkdir -- ./target/publish
+	export -- CARGO_TARGET="${CARGO_TARGET:-x86_64-unknown-linux-gnu}"
+	"${ZRUN[@]}" ':: build / rust / release' --quiet
+	"${ZRUN[@]}" ':: build / go / md5-copy'
+	cp -T -- "./target/${CARGO_TARGET}/release/md5-create" ./target/publish/md5-create
+	cp -T -- "./target/${CARGO_TARGET}/release/md5-diff" ./target/publish/md5-diff
+	cp -T -- "./target/${CARGO_TARGET}/release/md5-cpio" ./target/publish/md5-cpio
+	cp -T -- ./target/go/md5-copy ./target/publish/md5-copy
+!!
+
+
+<< deploy
+	test "${#}" -eq 1
+	exec -- rsync -r -c -I -i -p --chmod 0555 -- \
+			./target/publish/ \
+			"${1}" \
+	#
+!!
+
+
+<< publish + deploy
+	test "${#}" -ge 1
+	"${ZRUN[@]}" ':: publish'
+	exec -- "${ZRUN[@]}" ':: deploy' "${@}"
+!!
+
