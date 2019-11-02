@@ -351,31 +351,43 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	#[ derive (Clone) ]
 	struct Progress {
+		folder : indicatif::ProgressBar,
 		files : indicatif::ProgressBar,
 		data : indicatif::ProgressBar,
 	}
 	
 	let _progress = if _progress {
 		
+		let _folder = indicatif::ProgressBar::new (!0);
+		_folder.set_style (
+				indicatif::ProgressStyle::default_bar ()
+					.template ("[..] [{elapsed:>8}]  | {wide_msg} |")
+					.progress_chars ("=>-")
+					.tick_chars (".|/-\\")
+			);
+		
 		let _files = indicatif::ProgressBar::new (0);
 		_files.set_style (
 				indicatif::ProgressStyle::default_bar ()
-					.template("| {elapsed_precise} | {wide_bar} | {per_sec:>10} | {pos:>10} | {len:>10} | {percent:>3}% |")
-					.progress_chars("=>-")
+					.template ("[..] [{elapsed_precise}]  | {wide_bar} | {percent:>3}% | {per_sec:>10} | {pos:>10} | {len:>10} |")
+					.progress_chars ("=>-")
+					.tick_chars (".|/-\\")
 			);
 		_files.set_draw_delta (10);
 		
 		let _data = indicatif::ProgressBar::new (0);
 		_data.set_style (
 				indicatif::ProgressStyle::default_bar ()
-					.template("| {eta_precise} | {wide_bar} | {bytes_per_sec:>10} | {bytes:>10} | {total_bytes:>10} | {percent:>3}% |")
-					.progress_chars("=>-")
+					.template ("[..] [{eta_precise}]  | {wide_bar} | {percent:>3}% | {bytes_per_sec:>10} | {bytes:>10} | {total_bytes:>10} |")
+					.progress_chars ("=>-")
+					.tick_chars (".|/-\\")
 			);
 		_data.set_draw_delta (128 * 1024);
 		
 		{
 			let _dashboard = indicatif::MultiProgress::new ();
 			_dashboard.set_draw_target (indicatif::ProgressDrawTarget::stderr_with_hz (4));
+			_dashboard.add (_folder.clone ());
 			_dashboard.add (_files.clone ());
 			_dashboard.add (_data.clone ());
 			thread::spawn (move || -> () {
@@ -384,6 +396,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		}
 		
 		Some (Progress {
+				folder : _folder,
 				files : _files,
 				data : _data,
 			})
@@ -391,7 +404,6 @@ pub fn main () -> (Result<(), io::Error>) {
 	} else {
 		None
 	};
-	
 	
 	macro_rules! message {
 		( $progress : expr, $( $token : tt )+ ) => (
@@ -558,9 +570,17 @@ pub fn main () -> (Result<(), io::Error>) {
 		
 		if let Some (ref mut _batch) = _batch {
 			if _batch.capacity () == _batch.len () {
+				if let Some (ref _progress) = _progress {
+					_progress.folder.set_message ("(enqueueing...)");
+					_progress.folder.tick ();
+				}
 				_batch.sort_by_key (|&(_, _, _order)| _order);
 				for (_entry, _size, _) in _batch.drain (..) {
 					_enqueue.send ((_entry, _size)) .unwrap ();
+				}
+				if let Some (ref _progress) = _progress {
+					_progress.folder.set_message ("(walking...)");
+					_progress.folder.tick ();
 				}
 			}
 		}
@@ -636,6 +656,13 @@ pub fn main () -> (Result<(), io::Error>) {
 			}
 		}
 		
+		if _metadata.is_dir () {
+			if let Some (ref _progress) = _progress {
+				_progress.folder.set_message (& _entry.path () .to_string_lossy ());
+				_progress.folder.tick ();
+			}
+		}
+		
 		if _metadata.is_file () {
 			
 			if let Some (ref _progress) = _progress {
@@ -655,10 +682,19 @@ pub fn main () -> (Result<(), io::Error>) {
 	}
 	
 	if let Some (ref mut _batch) = _batch {
+		if let Some (ref _progress) = _progress {
+			_progress.folder.set_message ("(enqueueing...)");
+			_progress.folder.tick ();
+		}
 		_batch.sort_by_key (|&(_, _, _order)| _order);
 		for (_entry, _metadata, _) in _batch.drain (..) {
 			_enqueue.send ((_entry, _metadata)) .unwrap ();
 		}
+	}
+	
+	if let Some (ref _progress) = _progress {
+		_progress.folder.set_message ("(waiting...)");
+		_progress.folder.tick ();
 	}
 	
 	drop (_enqueue);
@@ -669,6 +705,9 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	
 	if let Some (ref _progress) = _progress {
+		_progress.folder.set_message ("(completed!)");
+		_progress.folder.tick ();
+		_progress.folder.finish ();
 		_progress.files.finish ();
 		_progress.data.finish ();
 	}
