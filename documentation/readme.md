@@ -14,14 +14,14 @@
 
 ## About
 
-This is a small collection of lightweight Rust-based tools related to the MD5 and SHA family hash files:
+This is a small collection of lightweight and efficient Rust-based tools related to the MD5 and SHA family hash files:
 
 * `md5-create` -- takes one argument (a folder or file) and generates to `stdout` an MD5/SHA hash file of all its children (that are files);
-  (see [bellow some of its features](#md5-create-features) that set it apart from `md5deep` or similar tools;)
-  (see [below for usage examples](#md5-create-usage);)
+  (**this is the star of this project**, see [bellow some of its features](#md5-create-features) that set it apart from `md5deep` or similar tools;)
+  (also see [below for usage examples](#md5-create-usage);)
 * `md5-diff` -- takes two MD5/SHA hash files and prints a report of differences between them;
   (see [below for usage examples](#md5-diff-usage);)
-* `md5-cpio` -- reads from `stdin` a CPIO archive (in `newc` format, as created with `cpio -o -H newc`) and generates to `stdout` an MD5/SHA hash file of all the archive members (that are files);
+* `md5-cpio` -- reads from `stdin` a CPIO archive (in `newc` format, as created by `cpio -o -H newc`) and generates to `stdout` an MD5/SHA hash file of all the archive members (that are files);
   (see [below for usage examples](#md5-cpio-usage);)
 * all these tools consume or generate files similar to those produced by `md5sum`/`sha1sum`/`sha256sum`;
 
@@ -33,12 +33,15 @@ Regarding the insecurity of MD5:
 * **although the tools are named `md5-*`, they do support the SHA family of hashes!**
 * yes, I know that MD5 is cryptographically broken;
 * yes, I know we should migrate to SHA-2 / SHA-3 family of hash functions;
-* but for the purpose of identifying duplicate, missing, or corrupted files I personally think it is still acceptable;
+* but for the purpose of identifying duplicate, missing, or corrupted files I personally think that MD5 it is still acceptable;
 
-There are also a few other tools and scripts found in `./sources/bin`:
+There are also a few other tools and scripts found in `./sources/bin` (which support only MD5):
 
-* `md5-create.bash` (for now a Bash script, supporting only MD5) -- takes one argument (a folder) and creates within it (or if exists the `.md5` folder exists underneath it) a timestamped MD5 hash file of all the folder members (that are files);  (it ignores symlinks or sub-mount-points;  it also ignores folders that have a `.md5.excluded` file within it;)
+* `md5-copy.go` -- takes four arguments, an MD5 hash file, a source folder, a "blobs store" folder, and a number of concurrent workers;  it will iterate through the MD5 hash file and copy from the source folder those "blobs" that are missing from the "blobs store" folder;
+  this tool can be used to make a backup of all unique files (even from multiple sources), thus removing duplicates, and all that is needed to recover the files is the "blob store" and the initial MD5 hash file;
+  (a "blob" is a file with a name equal to its hash value;  a "blob store" is a folder that contains (dispersed on two levels), the "blob" files;)
 * `md5-diff.go` -- the Go variant of the `md5-diff` tool;
+* `md5-create.bash` -- (supporting only MD5) -- takes one argument (a folder) and creates within it (or if exists the `.md5` folder exists underneath it) a timestamped MD5 hash file of all the folder members (that are files);  (it ignores symlinks or sub-mount-points;  it also ignores folders that have a `.md5.excluded` file within it;)
 
 
 
