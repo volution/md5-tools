@@ -252,6 +252,7 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string) (
 	if _stream_0, _error := os.OpenFile (_targetFileTmp, os.O_WRONLY | os.O_CREATE | os.O_EXCL, 0600); _error == nil {
 		_targetStreamTmp_1 = _stream_0
 	} else if os.IsExist (_error) {
+		_sourceStream.Close ()
 		return
 	} else {
 		panic (_error)
