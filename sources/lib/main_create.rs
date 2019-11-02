@@ -363,8 +363,7 @@ pub fn main () -> (Result<(), io::Error>) {
 					.template("| {elapsed_precise} | {wide_bar} | {per_sec:>10} | {pos:>10} | {len:>10} | {percent:>3}% |")
 					.progress_chars("=>-")
 			);
-		_files.set_draw_delta (100);
-		_files.enable_steady_tick (1000);
+		_files.set_draw_delta (10);
 		
 		let _data = indicatif::ProgressBar::new (0);
 		_data.set_style (
@@ -372,8 +371,7 @@ pub fn main () -> (Result<(), io::Error>) {
 					.template("| {eta_precise} | {wide_bar} | {bytes_per_sec:>10} | {bytes:>10} | {total_bytes:>10} | {percent:>3}% |")
 					.progress_chars("=>-")
 			);
-		_data.set_draw_delta (1024 * 1024);
-		_data.enable_steady_tick (1000);
+		_data.set_draw_delta (128 * 1024);
 		
 		{
 			let _dashboard = indicatif::MultiProgress::new ();
