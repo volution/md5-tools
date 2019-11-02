@@ -87,8 +87,8 @@ Besides the example bellow it also supports the following features:
             * if inside the source folder there is a sub-folder named `.{hash}` (where `{hash}` is `md5`, `sha1`, i.e. the name of the algorithm), or a sub-folder named `.hashes` or `.md5`, then a timestamped file is created into this sub-folder;
             * if inside the source folder there is a file named `.{hash}`, `.hashes` or `.md5` then a timestamped suffix is added to this path and used as an output;
             * else create a timestamped file prefixed with `.--` into the source folder;
-* `--zero` and `--no-zero` -- wheter to output heshes file where lines are terminated by `\0` (as opposed by `\n`);  (disabled by default;)
-* `--relative` and `--no-relative` -- wheter to output relative paths (to the source folder) in the resulting hashes file;  (enabled by default;)
+* `--zero` and `--no-zero` -- whether to output hashes file where lines are terminated by `\0` (as opposed by `\n`);  (disabled by default;)
+* `--relative` and `--no-relative` -- whether to output relative paths (to the source folder) in the resulting hashes file;  (enabled by default;)
 * `--xdev` and `--no-xdev` -- when walking the file-system, do not cross into other mount points;  (disabled by default;)
 * `--follow` and `--no-follow` -- when walking the file-system, do follow any symlinks;  (without this option not even symlinks to files are hashed;)  (disabled by default;)
 * `--workers-count` -- number of parallel threads that compute hashes;  (16 by default;)
