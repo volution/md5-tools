@@ -53,48 +53,54 @@ pub fn main () -> (Result<(), io::Error>) {
 		let mut _parser = argparse::ArgumentParser::new ();
 		
 		_parser.refer (&mut _source_path) .add_argument ("source", argparse::Parse, "source file or folder") .required ();
-		_parser.refer (&mut _output_path) .add_option (&["-o", "--output"], argparse::Parse, "output file (use `-` for `stdout`, and `.` for auto-detection) (`.` by default)");
+		_parser.refer (&mut _output_path) .add_option (&["--output", "-o"], argparse::Parse, "output file or folder (use `-` for stdout, `.` for auto-detection, or a destination file or folder) (`.` by default)");
 		
 		_hashes_flags.argparse (&mut _parser);
 		
 		_format_flags.argparse (&mut _parser);
 		
 		_parser.refer (&mut _relative)
-				.add_option (&["--relative"], argparse::StoreTrue, "output paths relative to source (true by default)")
-				.add_option (&["--no-relative"], argparse::StoreFalse, "do not output paths relative to source");
+				.add_option (&["--relative"], argparse::StoreTrue, "output paths relative to source (enabled by default)")
+				.add_option (&["--no-relative"], argparse::StoreFalse, "");
 		
-		_parser.refer (&mut _walk_xdev) .add_option (&["-x", "--xdev"], argparse::StoreTrue, "do not cross mount points");
-		_parser.refer (&mut _walk_follow) .add_option (&["-L", "--follow"], argparse::StoreTrue, "follow symlinks (n.b. arguments are followed)");
+		_parser.refer (&mut _walk_xdev)
+				.add_option (&["--xdev", "-x"], argparse::StoreTrue, "do not cross mount points (disabled by default)")
+				.add_option (&["--no-xdev"], argparse::StoreFalse, "");
+				
+		_parser.refer (&mut _walk_follow)
+				.add_option (&["--follow", "-L"], argparse::StoreTrue, "follow symlinks (disabley by default) (n.b. source is always followed)")
+				.add_option (&["--no-follow"], argparse::StoreFalse, "");
 		
-		_parser.refer (&mut _threads_count) .add_option (&["-w", "--workers-count"], argparse::Parse, "hashing workers count (16 by default)");
+		_parser.refer (&mut _threads_count) .add_option (&["--workers-count", "-w"], argparse::Parse, "hashing workers count (16 by default)");
 		_parser.refer (&mut _queue_size) .add_option (&["--workers-queue"], argparse::Parse, "hashing workers queue size (4096 times the workers count by default)");
 		_parser.refer (&mut _batch_size) .add_option (&["--workers-batch"], argparse::Parse, "hashing workers batch size (half the workers queue size by default)");
-		_parser.refer (&mut _batch_order) .add_option (&["--workers-sort"], argparse::Parse, "hashing workers batch sorting (by inode by default)");
+		_parser.refer (&mut _batch_order) .add_option (&["--workers-sort"], argparse::Parse, "hashing workers batch sorting (use `walk`, `inode`, `inode-and-size`, or `extent`) (`inode` by default)");
 		
 		_parser.refer (&mut _io_fadvise)
-				.add_option (&["--fadvise"], argparse::StoreTrue, "use OS `fadvise` with sequential and no-reuse (true by default)")
-				.add_option (&["--no-fadvise"], argparse::StoreFalse, "do not use OS `fadvise`;");
+				.add_option (&["--fadvise"], argparse::StoreTrue, "use OS `fadvise` with sequential and no-reuse (enabled by default)")
+				.add_option (&["--no-fadvise"], argparse::StoreFalse, "");
 		
 		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "set OS process scheduling priority (i.e. `nice`) (19 by default)");
 		
-		_parser.refer (&mut _ignore_all_errors)
-				.add_option (&["--ignore-all-errors"], argparse::StoreTrue, "ignore all errors (false by default)");
-		_parser.refer (&mut _ignore_walk_errors)
-				.add_option (&["--ignore-walk-errors"], argparse::StoreTrue, "ignore walk errors (i.e. folder reading, perhaps due to permissions) (false by default)");
-		_parser.refer (&mut _ignore_open_errors)
-				.add_option (&["--ignore-open-errors"], argparse::StoreTrue, "ignore open errors (i.e. file opening, perhaps due to permissions) (false by default)");
-		_parser.refer (&mut _ignore_read_errors)
-				.add_option (&["--ignore-read-errors"], argparse::StoreTrue, "ignore open errors (i.e. file reading, perhaps due to I/O) (false by default)");
 		_parser.refer (&mut _report_errors_to_sink)
-				.add_option (&["--errors-to-stdout"], argparse::StoreTrue, "on errors output an invalid hash (i.e. `00... */path/...`) (true by default)")
-				.add_option (&["--no-errors-to-stdout"], argparse::StoreFalse, "on errors do not output an invalid hash");
+				.add_option (&["--errors-to-stdout"], argparse::StoreTrue, "on errors output an invalid hash (i.e. `00... */path/...`) (enabled by default)")
+				.add_option (&["--no-errors-to-stdout"], argparse::StoreFalse, "");
 		_parser.refer (&mut _report_errors_to_stderr)
-				.add_option (&["--errors-to-stderr"], argparse::StoreTrue, "on errors report a message (true by default)")
-				.add_option (&["--no-errors-to-stderr"], argparse::StoreFalse, "on errors report a message");
+				.add_option (&["--errors-to-stderr"], argparse::StoreTrue, "on errors report a message (enabled by default)")
+				.add_option (&["--no-errors-to-stderr"], argparse::StoreFalse, "");
+		
+		_parser.refer (&mut _ignore_all_errors)
+				.add_option (&["--ignore-all-errors"], argparse::StoreTrue, "ignore all errors (disabled by default)");
+		_parser.refer (&mut _ignore_walk_errors)
+				.add_option (&["--ignore-walk-errors"], argparse::StoreTrue, "ignore walk errors (i.e. folder reading, perhaps due to permissions) (disabled by default)");
+		_parser.refer (&mut _ignore_open_errors)
+				.add_option (&["--ignore-open-errors"], argparse::StoreTrue, "ignore open errors (i.e. file opening, perhaps due to permissions) (disabled by default)");
+		_parser.refer (&mut _ignore_read_errors)
+				.add_option (&["--ignore-read-errors"], argparse::StoreTrue, "ignore open errors (i.e. file reading, perhaps due to I/O) (disabled by default)");
 		
 		_parser.refer (&mut _progress)
-				.add_option (&["--progress"], argparse::StoreTrue, "enable progress bar (true by default)")
-				.add_option (&["--no-progress"], argparse::StoreFalse, "disable progress bar");
+				.add_option (&["--progress"], argparse::StoreTrue, "monitor the progress (enabled by default)")
+				.add_option (&["--no-progress"], argparse::StoreFalse, "");
 		
 		_parser.parse_args_or_exit ();
 	}

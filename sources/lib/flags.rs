@@ -16,7 +16,7 @@ impl <'a> HashesFlags {
 	
 	pub fn argparse (&'a mut self, _parser : &mut argparse::parser::ArgumentParser<'a>) -> () {
 		_parser.refer (&mut self.algorithm)
-				.add_option (&["--md5"], argparse::StoreConst (&MD5), "create/expect MD5 hashes")
+				.add_option (&["--md5"], argparse::StoreConst (&MD5), "create/expect MD5 hashes (enabled by default)")
 				.add_option (&["--sha1"], argparse::StoreConst (&SHA1), "create/expect SHA1 hashes")
 				.add_option (&["--sha224", "--sha2-224"], argparse::StoreConst (&SHA2_224), "create/expect SHA2-224 hashes")
 				.add_option (&["--sha256", "--sha2-256"], argparse::StoreConst (&SHA2_256), "create/expect SHA2-256 hashes")
@@ -41,7 +41,9 @@ pub struct HashesFormatFlags {
 impl <'a> HashesFormatFlags {
 	
 	pub fn argparse (&'a mut self, _parser : &mut argparse::parser::ArgumentParser<'a>) -> () {
-		_parser.refer (&mut self.zero) .add_option (&["-z", "--zero"], argparse::StoreTrue, "delimit records by `\\0`");
+		_parser.refer (&mut self.zero)
+				.add_option (&["--zero", "-z"], argparse::StoreTrue, "delimit records by `\\0` (as opposed by `\\n`) (disabled by default)")
+				.add_option (&["--no-zero"], argparse::StoreFalse, "");
 	}
 }
 
@@ -71,14 +73,15 @@ impl <'a> CompressionFlags {
 	
 	pub fn argparse (&'a mut self, _parser : &mut argparse::parser::ArgumentParser<'a>) -> () {
 		_parser.refer (&mut self.algorithm)
-				.add_option (&["--gzip"], argparse::StoreConst (CompressionAlgorithm::Gzip), "create/expect `gzip` compression")
-				.add_option (&["--bzip2"], argparse::StoreConst (CompressionAlgorithm::Bzip2), "create/expect `bzip2` compression")
-				.add_option (&["--lzip"], argparse::StoreConst (CompressionAlgorithm::Lzip), "create/expect `lzip` compression")
-				.add_option (&["--xz"], argparse::StoreConst (CompressionAlgorithm::Xz), "create/expect `xz` compression")
-				.add_option (&["--lzma"], argparse::StoreConst (CompressionAlgorithm::Lzma), "create/expect `lzma` compression")
-				.add_option (&["--lz4"], argparse::StoreConst (CompressionAlgorithm::Lz4), "create/expect `lz4` compression")
-				.add_option (&["--lzo"], argparse::StoreConst (CompressionAlgorithm::Lzo), "create/expect `lzo` compression")
-				.add_option (&["--zstd"], argparse::StoreConst (CompressionAlgorithm::Zstd), "create/expect `zstd` compression")
+				.add_option (&["--gzip"], argparse::StoreConst (CompressionAlgorithm::Gzip), "create/expect `gzip` compressed")
+				.add_option (&["--bzip2"], argparse::StoreConst (CompressionAlgorithm::Bzip2), "create/expect `bzip2` compressed")
+				.add_option (&["--lzip"], argparse::StoreConst (CompressionAlgorithm::Lzip), "create/expect `lzip` compressed")
+				.add_option (&["--xz"], argparse::StoreConst (CompressionAlgorithm::Xz), "create/expect `xz` compressed")
+				.add_option (&["--lzma"], argparse::StoreConst (CompressionAlgorithm::Lzma), "create/expect `lzma` compressed")
+				.add_option (&["--lz4"], argparse::StoreConst (CompressionAlgorithm::Lz4), "create/expect `lz4` compressed")
+				.add_option (&["--lzo"], argparse::StoreConst (CompressionAlgorithm::Lzo), "create/expect `lzo` compressed")
+				.add_option (&["--zstd"], argparse::StoreConst (CompressionAlgorithm::Zstd), "create/expect `zstd` compressed")
+				.add_option (&["--no-compression"], argparse::StoreConst (CompressionAlgorithm::None), "create/expect uncompressed (enabled by default)")
 			;
 	}
 }
