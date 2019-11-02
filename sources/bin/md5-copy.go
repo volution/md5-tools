@@ -37,6 +37,31 @@ func main () () {
 	}
 	
 	
+	if _stat, _error := os.Stat (_sourcePath); _error == nil {
+		if ! _stat.Mode () .IsDir () {
+			panic (fmt.Sprintf ("[0337dae9]  invalid source folder (non folder) `%s`", _sourcePath))
+		} else {
+			// NOP
+		}
+	} else if os.IsNotExist (_error) {
+		panic (fmt.Sprintf ("[e8d2029c]  invalid source folder (not found) `%s`", _sourcePath))
+	} else {
+		panic (_error)
+	}
+	
+	if _stat, _error := os.Stat (_targetPath); _error == nil {
+		if ! _stat.Mode () .IsDir () {
+			panic (fmt.Sprintf ("[f6ea9a41]  invalid target folder (non folder) `%s`", _targetPath))
+		} else {
+			// NOP
+		}
+	} else if os.IsNotExist (_error) {
+		panic (fmt.Sprintf ("[b9843cd6]  invalid target folder (not found) `%s`", _targetPath))
+	} else {
+		panic (_error)
+	}
+	
+	
 	var _hashesStream *bufio.Reader
 	if _stream_0 , _error := os.Open (_hashesPath); _error == nil {
 		_hashesStream = bufio.NewReaderSize (_stream_0, 16 * 1024 * 1024)
@@ -106,6 +131,12 @@ func main () () {
 		// NOTE:  Skip empty files...
 		
 		if _hash == md5EmptyHash {
+			continue
+		}
+		
+		// NOTE:  Skip invalid files...
+		
+		if _hash == md5InvalidHash {
 			continue
 		}
 		
@@ -370,6 +401,7 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string) (
 
 var md5RecordLine *regexp.Regexp = regexp.MustCompile (`^([0-9a-f]{32}) \*(.+)$`)
 var md5EmptyHash string = "d41d8cd98f00b204e9800998ecf8427e"
+var md5InvalidHash string = "00000000000000000000000000000000"
 
 
 
