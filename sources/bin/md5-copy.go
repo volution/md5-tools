@@ -172,6 +172,8 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string) (
 		}
 	} else if os.IsNotExist (_error) {
 		// NOP
+	} else if _error, _ok := _error.(*os.PathError); _ok && _error.Err == syscall.ENOTDIR {
+		panic (fmt.Sprintf ("[26c24a68]  invalid target file (parent non folder) `%s`", _targetFile))
 	} else {
 		panic (_error)
 	}
@@ -191,6 +193,9 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string) (
 		}
 	} else if os.IsNotExist (_error) {
 		fmt.Fprintf (os.Stderr, "[ee] [6cf84aa8]  invalid source file (not found) `%s`;  ignoring!\n", _sourceFile)
+		return
+	} else if _error, _ok := _error.(*os.PathError); _ok && _error.Err == syscall.ENOTDIR {
+		fmt.Fprintf (os.Stderr, "[ee] [9c5ed744]  invalid source file (parent non folder) `%s`;  ignoring!\n", _sourceFile)
 		return
 	} else {
 		panic (_error)
