@@ -126,10 +126,10 @@ func main () () {
 		}
 		
 		
-		// NOTE:  Skip empty files...
+		// NOTE:  Do not skip empty files...
 		
 		if _hash == md5EmptyHash {
-			continue
+			// NOP
 		}
 		
 		// NOTE:  Skip invalid files...
@@ -150,6 +150,7 @@ func main () () {
 
 func link (_hash string, _path string, _blobsPath string, _targetPath string) () {
 	
+	
 	// NOTE:  Compute source and target paths...
 	
 	_blobFolder_1 := path.Join (_blobsPath, _hash[0:2])
@@ -159,10 +160,13 @@ func link (_hash string, _path string, _blobsPath string, _targetPath string) ()
 	_targetFile := path.Join (_targetPath, _path)
 	_targetFolder := path.Dir (_targetFile)
 	
+	
 	// NOTE:  Check if blob file exists...
 	
 	var _blobStat os.FileInfo
-	if _stat, _error := os.Lstat (_blobFile); _error == nil {
+	if _hash == md5EmptyHash {
+		// NOP
+	} else if _stat, _error := os.Lstat (_blobFile); _error == nil {
 		if ! _stat.Mode () .IsRegular () {
 			panic (fmt.Sprintf ("[8484e3c6]  invalid blob file (non file) `%s`", _blobFile))
 		} else {
@@ -185,8 +189,11 @@ func link (_hash string, _path string, _blobsPath string, _targetPath string) ()
 		if ! _stat.Mode () .IsRegular () {
 			fmt.Fprintf (os.Stderr, "[ee] [6ffb7ba4]  invalid target file (non file) `%s`;  ignoring!\n", _targetFile)
 			return
-		} else if ! os.SameFile (_blobStat, _stat) {
+		} else if (_hash != md5EmptyHash) && ! os.SameFile (_blobStat, _stat) {
 			fmt.Fprintf (os.Stderr, "[ee] [d5c5c73f]  invalid target file (existing) `%s`;  ignoring!\n", _targetFile)
+			return
+		} else if (_hash == md5EmptyHash) && (_stat.Size () != 0) {
+			fmt.Fprintf (os.Stderr, "[ee] [f2b11a94]  invalid target file (not empty) `%s`;  ignoring!\n", _targetFile)
 			return
 		} else {
 //			fmt.Fprintf (os.Stderr, "[dd] [518cc370]  existing target file `%s`;  skipping!\n", _targetFile)
@@ -209,9 +216,21 @@ func link (_hash string, _path string, _blobsPath string, _targetPath string) ()
 		return
 	}
 	
-	if _error := os.Link (_blobFile, _targetFile); _error != nil {
-		fmt.Fprintf (os.Stderr, "[ee] [cefec6b9]  failed linking target file `%s`;  ignoring!\n", _targetFile);
-		return
+	if _hash != md5EmptyHash {
+		if _error := os.Link (_blobFile, _targetFile); _error != nil {
+			fmt.Fprintf (os.Stderr, "[ee] [cefec6b9]  failed linking target file `%s`;  ignoring!\n", _targetFile);
+			return
+		}
+	} else {
+		if _file, _error := os.OpenFile (_targetFile, os.O_CREATE | os.O_EXCL | os.O_RDONLY, 0400); _error != nil {
+			fmt.Fprintf (os.Stderr, "[ee] [315e2a09]  failed creating target file `%s`;  ignoring!\n", _targetFile);
+			return
+		} else {
+			if _error := _file.Close (); _error != nil {
+				fmt.Fprintf (os.Stderr, "[ee] [4eb1ecb6]  failed creating target file `%s`;  ignoring!\n", _targetFile);
+				return
+			}
+		}
 	}
 }
 
