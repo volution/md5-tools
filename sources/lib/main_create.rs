@@ -10,7 +10,6 @@ use ::walkdir;
 
 use crate::digests::*;
 use crate::flags::*;
-use crate::hashes::*;
 use crate::prelude::*;
 use crate::sinks::*;
 
@@ -20,149 +19,59 @@ use crate::sinks::*;
 pub fn main () -> (Result<(), io::Error>) {
 	
 	
-	let mut _hashes_flags = HashesFlags {
-			algorithm : &MD5,
-		};
-	
-	let mut _format_flags = HashesFormatFlags {
-			zero : false,
-		};
-	
-	let mut _output_path = path::PathBuf::from ("");
-	let mut _source_path = path::PathBuf::from ("");
-	
-	let mut _progress = true;
-	let mut _relative = true;
-	let mut _walk_xdev = false;
-	let mut _walk_follow = false;
-	let mut _threads_count = 0 as usize;
-	let mut _queue_size = 0 as usize;
-	let mut _batch_size = 0 as usize;
-	let mut _batch_order = String::from ("");
-	let mut _nice_level = 19 as i8;
-	
-	let mut _ignore_all_errors = false;
-	let mut _ignore_walk_errors = false;
-	let mut _ignore_open_errors = false;
-	let mut _ignore_read_errors = false;
-	let mut _report_errors_to_sink = true;
-	let mut _report_errors_to_stderr = true;
-	let mut _io_fadvise = true;
+	let mut _flags = CreateFlags::default ();
 	
 	{
 		let mut _parser = argparse::ArgumentParser::new ();
-		
-		_parser.refer (&mut _source_path) .add_argument ("source", argparse::Parse, "source file or folder") .required ();
-		_parser.refer (&mut _output_path) .add_option (&["--output", "-o"], argparse::Parse, "output file or folder (use `-` for stdout, `.` for auto-detection, or a destination file or folder) (`.` by default)");
-		
-		_hashes_flags.argparse (&mut _parser);
-		
-		_format_flags.argparse (&mut _parser);
-		
-		_parser.refer (&mut _relative)
-				.add_option (&["--relative"], argparse::StoreTrue, "output paths relative to source (enabled by default)")
-				.add_option (&["--no-relative"], argparse::StoreFalse, "");
-		
-		_parser.refer (&mut _walk_xdev)
-				.add_option (&["--xdev", "-x"], argparse::StoreTrue, "do not cross mount points (disabled by default)")
-				.add_option (&["--no-xdev"], argparse::StoreFalse, "");
-				
-		_parser.refer (&mut _walk_follow)
-				.add_option (&["--follow", "-L"], argparse::StoreTrue, "follow symlinks (disabley by default) (n.b. source is always followed)")
-				.add_option (&["--no-follow"], argparse::StoreFalse, "");
-		
-		_parser.refer (&mut _threads_count) .add_option (&["--workers-count", "-w"], argparse::Parse, "hashing workers count (16 by default)");
-		_parser.refer (&mut _queue_size) .add_option (&["--workers-queue"], argparse::Parse, "hashing workers queue size (4096 times the workers count by default)");
-		_parser.refer (&mut _batch_size) .add_option (&["--workers-batch"], argparse::Parse, "hashing workers batch size (half the workers queue size by default)");
-		_parser.refer (&mut _batch_order) .add_option (&["--workers-sort"], argparse::Parse, "hashing workers batch sorting (use `walk`, `inode`, `inode-and-size`, or `extent`) (`inode` by default)");
-		
-		_parser.refer (&mut _io_fadvise)
-				.add_option (&["--fadvise"], argparse::StoreTrue, "use OS `fadvise` with sequential and no-reuse (enabled by default)")
-				.add_option (&["--no-fadvise"], argparse::StoreFalse, "");
-		
-		_parser.refer (&mut _nice_level) .add_option (&["--nice"], argparse::Parse, "set OS process scheduling priority (i.e. `nice`) (19 by default)");
-		
-		_parser.refer (&mut _report_errors_to_sink)
-				.add_option (&["--errors-to-stdout"], argparse::StoreTrue, "on errors output an invalid hash (i.e. `00... */path/...`) (enabled by default)")
-				.add_option (&["--no-errors-to-stdout"], argparse::StoreFalse, "");
-		_parser.refer (&mut _report_errors_to_stderr)
-				.add_option (&["--errors-to-stderr"], argparse::StoreTrue, "on errors report a message (enabled by default)")
-				.add_option (&["--no-errors-to-stderr"], argparse::StoreFalse, "");
-		
-		_parser.refer (&mut _ignore_all_errors)
-				.add_option (&["--ignore-all-errors"], argparse::StoreTrue, "ignore all errors (disabled by default)");
-		_parser.refer (&mut _ignore_walk_errors)
-				.add_option (&["--ignore-walk-errors"], argparse::StoreTrue, "ignore walk errors (i.e. folder reading, perhaps due to permissions) (disabled by default)");
-		_parser.refer (&mut _ignore_open_errors)
-				.add_option (&["--ignore-open-errors"], argparse::StoreTrue, "ignore open errors (i.e. file opening, perhaps due to permissions) (disabled by default)");
-		_parser.refer (&mut _ignore_read_errors)
-				.add_option (&["--ignore-read-errors"], argparse::StoreTrue, "ignore open errors (i.e. file reading, perhaps due to I/O) (disabled by default)");
-		
-		_parser.refer (&mut _progress)
-				.add_option (&["--progress"], argparse::StoreTrue, "monitor the progress (enabled by default)")
-				.add_option (&["--no-progress"], argparse::StoreFalse, "");
-		
+		_flags.argparse (&mut _parser);
 		_parser.parse_args_or_exit ();
 	}
 	
 	
-	if _output_path == path::Path::new ("") {
-		_output_path = path::PathBuf::from (".");
+	if _flags.output_path == path::Path::new ("") {
+		_flags.output_path = path::PathBuf::from (".");
 	}
-	if _source_path == path::Path::new ("") {
-		_source_path = path::PathBuf::from (".");
+	if _flags.source_path == path::Path::new ("") {
+		_flags.source_path = path::PathBuf::from (".");
 	}
 	
-	let _batch_order = match _batch_order.as_str () {
-		"index" | "walk" =>
-			DirEntryOrderKind::Index,
-		"inode" | "" =>
-			DirEntryOrderKind::Inode,
-		"inode-and-size" =>
-			DirEntryOrderKind::InodeAndSizeBuckets,
-		"extent" =>
-			DirEntryOrderKind::Extent,
-		"random" =>
-			DirEntryOrderKind::Random,
-		_ =>
-			return Err (io::Error::new (io::ErrorKind::Other, "[3046e5fa]  invalid batch sorting")),
-	};
-	
-	if _threads_count == 0 {
-		_threads_count = 16;
+	if _flags.threads_count == 0 {
+		_flags.threads_count = 16;
 	}
-	if _queue_size == 0 {
-		_queue_size = _threads_count * 1024 * 4;
+	if _flags.queue_size == 0 {
+		_flags.queue_size = _flags.threads_count * 1024 * 4;
 	}
-	if _batch_size == 0 {
-		_batch_size = _queue_size / 2;
+	if _flags.batch_size == 0 {
+		_flags.batch_size = _flags.queue_size / 2;
 	}
-	if _ignore_all_errors {
-		_ignore_walk_errors = true;
-		_ignore_open_errors = true;
-		_ignore_read_errors = true;
+	if _flags.ignore_all_errors {
+		_flags.ignore_walk_errors = true;
+		_flags.ignore_open_errors = true;
+		_flags.ignore_read_errors = true;
 	}
 	
 	
-	if _nice_level != 0 {
+	if _flags.threads_nice != 0 {
 		unsafe {
 			// FIXME:  Check the return value!
-			libc::nice (_nice_level as i32);
+			libc::nice (_flags.threads_nice as i32);
 		}
 	}
 	
 	
 	
 	
+	let _source_path = _flags.source_path.clone ();
+	
 	let _relative_path = match fs::metadata (&_source_path) {
 		Ok (ref _stat) if _stat.is_dir () =>
-			if _relative {
+			if _flags.relative {
 				Some (_source_path.clone ())
 			} else {
 				None
 			},
 		Ok (ref _stat) if _stat.is_file () =>
-			if _relative {
+			if _flags.relative {
 				if let Some (_relative_path) = _source_path.parent () {
 					Some (_relative_path.into ())
 				} else {
@@ -181,6 +90,8 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	
 	
+	
+	let mut _output_path = _flags.output_path.clone ();
 	
 	let _output_descriptor = if
 			if _output_path == path::Path::new ("-") {
@@ -227,7 +138,7 @@ pub fn main () -> (Result<(), io::Error>) {
 			match fs::metadata (&_source_path) {
 				Ok (ref _stat) if _stat.is_dir () => {
 					let mut _outcome = None;
-					for _suffix in &[_hashes_flags.algorithm.suffix, ".hashes", ".md5"] {
+					for _suffix in &[_flags.hashes_flags.algorithm.suffix, ".hashes", ".md5"] {
 						let _output_path_base = _source_path.join (_suffix);
 						match fs::metadata (&_output_path_base) {
 							Ok (ref _stat) if _stat.is_dir () => {
@@ -273,7 +184,7 @@ pub fn main () -> (Result<(), io::Error>) {
 				Some (_output_path),
 			Some ((_output_path_base, Some (_transformer))) => {
 				
-				let _output_path_suffix = _hashes_flags.algorithm.suffix;
+				let _output_path_suffix = _flags.hashes_flags.algorithm.suffix;
 				
 				let _output_timestamp = {
 					
@@ -330,19 +241,19 @@ pub fn main () -> (Result<(), io::Error>) {
 		(_output_file, Some (_output_stat))
 	} else {
 		if _output_path == path::Path::new ("/dev/stdout") && atty::is (atty::Stream::Stdout) {
-			_progress = false;
+			_flags.report_progress = false;
 		}
 		let _output_file = fs::OpenOptions::new () .write (true) .open (_output_path) ?;
 		(_output_file, None)
 	};
 	
 	
-	let _sink = StandardHashesSink::new (_output_file, _format_flags.zero);
+	let _sink = StandardHashesSink::new (_output_file, _flags.format_flags.zero);
 	let _sink = sync::Arc::new (sync::Mutex::new (_sink));
 	
 	
-	let (_enqueue, _dequeue) = crossbeam::channel::bounded::<(walkdir::DirEntry, fs::Metadata)> (_queue_size);
-	let mut _completions = Vec::with_capacity (_threads_count);
+	let (_enqueue, _dequeue) = crossbeam::channel::bounded::<(walkdir::DirEntry, fs::Metadata)> (_flags.queue_size);
+	let mut _completions = Vec::with_capacity (_flags.threads_count);
 	let _threads_errors = sync::Arc::new (sync::Mutex::new (Vec::new ()));
 	let _done = crossbeam::sync::WaitGroup::new ();
 	
@@ -357,10 +268,10 @@ pub fn main () -> (Result<(), io::Error>) {
 	}
 	
 	if ! atty::is (atty::Stream::Stderr) {
-		_progress = false;
+		_flags.report_progress = false;
 	}
 	
-	let _progress = if _progress {
+	let _progress = if _flags.report_progress {
 		
 		let _folder = indicatif::ProgressBar::new (!0);
 		_folder.set_style (
@@ -422,7 +333,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	
 	
-	for _ in 0 .. _threads_count {
+	for _ in 0 .. _flags.threads_count {
 		
 		let _relative_path = _relative_path.clone ();
 		let _sink = sync::Arc::clone (&_sink);
@@ -431,7 +342,7 @@ pub fn main () -> (Result<(), io::Error>) {
 		let _progress = _progress.clone ();
 		let _done = _done.clone ();
 		
-		let _hashes_algorithm = _hashes_flags.algorithm;
+		let _flags = _flags.clone ();
 		
 		let _completion = thread::spawn (move || -> Result<(), io::Error> {
 				
@@ -462,15 +373,15 @@ pub fn main () -> (Result<(), io::Error>) {
 							_file,
 						Err (_error) => {
 							let mut _sink = _sink.lock () .unwrap ();
-							if _report_errors_to_stderr {
+							if _flags.report_errors_to_stderr {
 								message! (_progress, "[ee] [42f1352f]  failed opening file `{}`: `{}`!", _path.to_string_lossy (), _error);
 							}
-							if _report_errors_to_sink {
-								_sink.handle (_path_for_sink, _hashes_algorithm.invalid_raw) ?;
+							if _flags.report_errors_to_sink {
+								_sink.handle (_path_for_sink, _flags.hashes_flags.algorithm.invalid_raw) ?;
 								_sink.flush () ?;
 							}
 							_threads_errors.lock () .unwrap () .push (_error);
-							if _ignore_open_errors {
+							if _flags.ignore_open_errors {
 								continue;
 							} else {
 								return Ok (());
@@ -478,7 +389,7 @@ pub fn main () -> (Result<(), io::Error>) {
 						},
 					};
 					
-					if _io_fadvise {
+					if _flags.read_fadvise {
 						let mut _failed = false;
 						unsafe {
 							if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_SEQUENTIAL) != 0 {
@@ -497,22 +408,22 @@ pub fn main () -> (Result<(), io::Error>) {
 					}
 					
 					_hash_buffer.clear ();
-					match digest (_hashes_algorithm, &mut _file, &mut _hash_buffer) {
+					match digest (_flags.hashes_flags.algorithm, &mut _file, &mut _hash_buffer) {
 						Ok (()) => {
 							let mut _sink = _sink.lock () .unwrap ();
 							_sink.handle (_path_for_sink, &_hash_buffer) ?;
 						},
 						Err (_error) => {
 							let mut _sink = _sink.lock () .unwrap ();
-							if _report_errors_to_stderr {
+							if _flags.report_errors_to_stderr {
 								message! (_progress, "[ee] [1aeb2750]  failed reading file `{}`: `{}`!", _path.to_string_lossy (), _error);
 							}
-							if _report_errors_to_sink {
-								_sink.handle (_path_for_sink, _hashes_algorithm.invalid_raw) ?;
+							if _flags.report_errors_to_sink {
+								_sink.handle (_path_for_sink, _flags.hashes_flags.algorithm.invalid_raw) ?;
 								_sink.flush () ?;
 							}
 							_threads_errors.lock () .unwrap () .push (_error);
-							if _ignore_read_errors {
+							if _flags.ignore_read_errors {
 								continue;
 							} else {
 								return Ok (());
@@ -520,7 +431,7 @@ pub fn main () -> (Result<(), io::Error>) {
 						},
 					}
 					
-					if _io_fadvise {
+					if _flags.read_fadvise {
 						let mut _failed = false;
 						unsafe {
 							if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_DONTNEED) != 0 {
@@ -549,16 +460,16 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	
 	let mut _walker = walkdir::WalkDir::new (&_source_path)
-			.same_file_system (_walk_xdev)
-			.follow_links (_walk_follow)
+			.same_file_system (_flags.walk_xdev)
+			.follow_links (_flags.walk_follow)
 			.contents_first (true)
 			.into_iter ();
 	
 	let mut _walk_index = 0 as u64;
 	
 	
-	let mut _batch = if _batch_size > 1 {
-		Some (Vec::<(walkdir::DirEntry, fs::Metadata, DirEntryOrder)>::with_capacity (_batch_size))
+	let mut _batch = if _flags.batch_size > 1 {
+		Some (Vec::<(walkdir::DirEntry, fs::Metadata, DirEntryOrder)>::with_capacity (_flags.batch_size))
 	} else {
 		None
 	};
@@ -599,20 +510,20 @@ pub fn main () -> (Result<(), io::Error>) {
 					message! (_progress, "[ww] [55021f5c]  detected walking loop for `{}` pointing at `{}`;  ignoring!", _path.to_string_lossy (), _ancestor.to_string_lossy ());
 					continue;
 				}
-				if _report_errors_to_stderr {
+				if _flags.report_errors_to_stderr {
 					message! (_progress, "[ee] [a5e88e25]  failed walking path `{}`: `{}`!", _path.to_string_lossy (), _error.io_error () .unwrap_or (&_unknown_error));
 				}
-				if _report_errors_to_sink {
+				if _flags.report_errors_to_sink {
 					let _path_for_sink = if let Some (ref _relative_path) = _relative_path {
 						_path.strip_prefix (_relative_path) .unwrap () .as_os_str ()
 					} else {
 						_path.as_os_str ()
 					};
 					let _path_for_sink = if _path_for_sink != "" { _path_for_sink } else { ffi::OsStr::new (".") };
-					_sink.handle (_path_for_sink, _hashes_flags.algorithm.invalid_raw) ?;
+					_sink.handle (_path_for_sink, _flags.hashes_flags.algorithm.invalid_raw) ?;
 					_sink.flush () ?;
 				}
-				if _ignore_walk_errors {
+				if _flags.ignore_walk_errors {
 					continue;
 				} else {
 					let _error = _error.into_io_error () .unwrap_or_else (|| io::Error::new (io::ErrorKind::Other, "[7961fa68]  unexpected error"));
@@ -630,10 +541,10 @@ pub fn main () -> (Result<(), io::Error>) {
 			Err (_error) => {
 				let mut _sink = _sink.lock () .unwrap ();
 				let _path = _error.path () .unwrap_or (&_source_path);
-				if _report_errors_to_stderr {
+				if _flags.report_errors_to_stderr {
 					message! (_progress, "[ee] [96d2838a]  failed walking path `{}`: `{}`!", _entry.path () .to_string_lossy (), _error.io_error () .unwrap_or (&_unknown_error));
 				}
-				if _report_errors_to_sink {
+				if _flags.report_errors_to_sink {
 					let _path = _entry.path ();
 					let _path_for_sink = if let Some (ref _relative_path) = _relative_path {
 						_path.strip_prefix (_relative_path) .unwrap () .as_os_str ()
@@ -641,10 +552,10 @@ pub fn main () -> (Result<(), io::Error>) {
 						_path.as_os_str ()
 					};
 					let _path_for_sink = if _path_for_sink != "" { _path_for_sink } else { ffi::OsStr::new (".") };
-					_sink.handle (_path_for_sink, _hashes_flags.algorithm.invalid_raw) ?;
+					_sink.handle (_path_for_sink, _flags.hashes_flags.algorithm.invalid_raw) ?;
 					_sink.flush () ?;
 				}
-				if _ignore_walk_errors {
+				if _flags.ignore_walk_errors {
 					continue;
 				} else {
 					let _error = _error.into_io_error () .unwrap_or_else (|| io::Error::new (io::ErrorKind::Other, "[7961fa68]  unexpected error"));
@@ -677,7 +588,7 @@ pub fn main () -> (Result<(), io::Error>) {
 			}
 			
 			if let Some (ref mut _batch) = _batch {
-				let _order = entry_order (&_entry, &_metadata, _walk_index, _batch_order);
+				let _order = entry_order (&_entry, &_metadata, _walk_index, _flags.batch_order);
 				_batch.push ((_entry, _metadata, _order));
 			} else {
 				_enqueue.send ((_entry, _metadata)) .unwrap ();
@@ -770,27 +681,18 @@ pub fn main_0 () -> ! {
 #[ derive (Copy, Clone, Eq, Ord, PartialEq, PartialOrd) ]
 struct DirEntryOrder (u64, u64, u64);
 
-#[ derive (Copy, Clone, Eq, Ord, PartialEq, PartialOrd) ]
-enum DirEntryOrderKind {
-	Index,
-	Inode,
-	InodeAndSizeBuckets,
-	Extent,
-	Random,
-}
 
-
-fn entry_order (_entry : & walkdir::DirEntry, _metadata : & fs::Metadata, _index : u64, _kind : DirEntryOrderKind) -> (DirEntryOrder) {
+fn entry_order (_entry : & walkdir::DirEntry, _metadata : & fs::Metadata, _index : u64, _kind : CreateBatchOrder) -> (DirEntryOrder) {
 	match _kind {
-		DirEntryOrderKind::Index =>
+		CreateBatchOrder::Index =>
 			DirEntryOrder (_index, 0, 0),
-		DirEntryOrderKind::Inode =>
+		CreateBatchOrder::Inode =>
 			DirEntryOrder (_metadata.ino (), 0, 0),
-		DirEntryOrderKind::InodeAndSizeBuckets =>
+		CreateBatchOrder::InodeAndSizeBuckets =>
 			return entry_order_by_inode (_entry, _metadata, _index),
-		DirEntryOrderKind::Extent =>
+		CreateBatchOrder::Extent =>
 			return entry_order_by_extent (_entry, _metadata, _index),
-		DirEntryOrderKind::Random =>
+		CreateBatchOrder::Random =>
 			return entry_order_by_hash (_entry, _metadata, _index),
 	}
 }

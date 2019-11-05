@@ -1,5 +1,6 @@
 
 
+#[ derive (Copy, Clone, Eq, PartialEq) ]
 pub enum HashAlgorithmKind {
 	MD5,
 	SHA1,
@@ -13,6 +14,8 @@ pub enum HashAlgorithmKind {
 	SHA3_512,
 }
 
+
+#[ derive (Copy, Clone, Eq, PartialEq) ]
 pub struct HashAlgorithm {
 	pub kind : HashAlgorithmKind,
 	pub name : &'static str,
