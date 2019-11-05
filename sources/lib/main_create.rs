@@ -16,6 +16,37 @@ use crate::sinks::*;
 
 
 
+#[ derive (Clone) ]
+struct HasherContext <Sink : HashesSink>  {
+	
+	flags : CreateFlags,
+	queue : crossbeam::channel::Receiver<HasherTask>,
+	sink : sync::Arc<sync::Mutex<Sink>>,
+	errors : sync::Arc<sync::Mutex<Vec<io::Error>>>,
+	progress : Option<Progress>,
+	done : crossbeam::sync::WaitGroup,
+}
+
+
+#[ derive (Clone) ]
+struct HasherTask {
+	
+	path : path::PathBuf,
+	metadata : fs::Metadata,
+}
+
+
+#[ derive (Clone) ]
+struct Progress {
+	
+	folder : indicatif::ProgressBar,
+	files : indicatif::ProgressBar,
+	data : indicatif::ProgressBar,
+}
+
+
+
+
 pub fn main () -> (Result<(), io::Error>) {
 	
 	
@@ -252,20 +283,13 @@ pub fn main () -> (Result<(), io::Error>) {
 	let _sink = sync::Arc::new (sync::Mutex::new (_sink));
 	
 	
-	let (_enqueue, _dequeue) = crossbeam::channel::bounded::<(walkdir::DirEntry, fs::Metadata)> (_flags.queue_size);
+	let (_enqueue, _dequeue) = crossbeam::channel::bounded::<HasherTask> (_flags.queue_size);
 	let mut _completions = Vec::with_capacity (_flags.threads_count);
 	let _threads_errors = sync::Arc::new (sync::Mutex::new (Vec::new ()));
 	let _done = crossbeam::sync::WaitGroup::new ();
 	
 	
 	
-	
-	#[ derive (Clone) ]
-	struct Progress {
-		folder : indicatif::ProgressBar,
-		files : indicatif::ProgressBar,
-		data : indicatif::ProgressBar,
-	}
 	
 	if ! atty::is (atty::Stream::Stderr) {
 		_flags.report_progress = false;
@@ -335,128 +359,23 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	for _ in 0 .. _flags.threads_count {
 		
+		let _context = HasherContext {
+				flags : _flags.clone (),
+				queue : _dequeue.clone (),
+				sink : sync::Arc::clone (&_sink),
+				errors : sync::Arc::clone (&_threads_errors),
+				progress : _progress.clone (),
+				done : _done.clone (),
+			};
+		
 		let _relative_path = _relative_path.clone ();
-		let _sink = sync::Arc::clone (&_sink);
-		let _dequeue = _dequeue.clone ();
-		let _threads_errors = sync::Arc::clone (&_threads_errors);
-		let _progress = _progress.clone ();
-		let _done = _done.clone ();
 		
-		let _flags = _flags.clone ();
-		
-		let _completion = thread::spawn (move || -> Result<(), io::Error> {
-				
-				let mut _hash_buffer = Vec::with_capacity (128);
-				
-				loop {
-					
-					let (_entry, _metadata) = match _dequeue.recv () {
-						Ok (_payload) =>
-							_payload,
-						Err (crossbeam::channel::RecvError) =>
-							break,
-					};
-					
-					let _path = _entry.path ();
-					let _path_for_sink = if let Some (ref _relative_path) = _relative_path {
-						_path.strip_prefix (_relative_path) .unwrap () .as_os_str ()
-					} else {
-						_path.as_os_str ()
-					};
-					let _path_for_sink = if _path_for_sink != "" { _path_for_sink } else { ffi::OsStr::new (".") };
-					
-					let mut _open = fs::OpenOptions::new ();
-					_open.read (true);
-					
-					let mut _file = match _open.open (_path) {
-						Ok (_file) =>
-							_file,
-						Err (_error) => {
-							let mut _sink = _sink.lock () .unwrap ();
-							if _flags.report_errors_to_stderr {
-								message! (_progress, "[ee] [42f1352f]  failed opening file `{}`: `{}`!", _path.to_string_lossy (), _error);
-							}
-							if _flags.report_errors_to_sink {
-								_sink.handle (_path_for_sink, _flags.hashes_flags.algorithm.invalid_raw) ?;
-								_sink.flush () ?;
-							}
-							_threads_errors.lock () .unwrap () .push (_error);
-							if _flags.ignore_open_errors {
-								continue;
-							} else {
-								return Ok (());
-							}
-						},
-					};
-					
-					if _flags.read_fadvise {
-						let mut _failed = false;
-						unsafe {
-							if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_SEQUENTIAL) != 0 {
-								_failed = true;
-							}
-							if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_NOREUSE) != 0 {
-								_failed = true;
-							}
-							if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_WILLNEED) != 0 {
-								_failed = true;
-							}
-						}
-						if _failed {
-							message! (_progress, "[ww] [76280772]  `fadvise` failed!")
-						}
-					}
-					
-					_hash_buffer.clear ();
-					match digest (_flags.hashes_flags.algorithm, &mut _file, &mut _hash_buffer) {
-						Ok (()) => {
-							let mut _sink = _sink.lock () .unwrap ();
-							_sink.handle (_path_for_sink, &_hash_buffer) ?;
-						},
-						Err (_error) => {
-							let mut _sink = _sink.lock () .unwrap ();
-							if _flags.report_errors_to_stderr {
-								message! (_progress, "[ee] [1aeb2750]  failed reading file `{}`: `{}`!", _path.to_string_lossy (), _error);
-							}
-							if _flags.report_errors_to_sink {
-								_sink.handle (_path_for_sink, _flags.hashes_flags.algorithm.invalid_raw) ?;
-								_sink.flush () ?;
-							}
-							_threads_errors.lock () .unwrap () .push (_error);
-							if _flags.ignore_read_errors {
-								continue;
-							} else {
-								return Ok (());
-							}
-						},
-					}
-					
-					if _flags.read_fadvise {
-						let mut _failed = false;
-						unsafe {
-							if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_DONTNEED) != 0 {
-								_failed = true;
-							}
-						}
-						if _failed {
-							message! (_progress, "[ww] [def753c5]  `fadvise` failed!")
-						}
-					}
-					
-					if let Some (ref _progress) = _progress {
-						_progress.files.inc (1);
-						_progress.data.inc (_metadata.size ());
-					}
-				}
-				
-				drop (_sink);
-				drop (_done);
-				
-				return Ok (());
-			});
+		let _completion = thread::spawn (move || execute_hasher (_context, _relative_path));
 		
 		_completions.push (_completion);
 	}
+	
+	
 	
 	
 	let mut _walker = walkdir::WalkDir::new (&_source_path)
@@ -490,8 +409,12 @@ pub fn main () -> (Result<(), io::Error>) {
 					_progress.folder.tick ();
 				}
 				_batch.sort_by_key (|&(_, _, _order)| _order);
-				for (_entry, _size, _) in _batch.drain (..) {
-					_enqueue.send ((_entry, _size)) .unwrap ();
+				for (_entry, _metadata, _) in _batch.drain (..) {
+					let _task = HasherTask {
+							path : _entry.into_path (),
+							metadata : _metadata,
+						};
+					_enqueue.send (_task) .unwrap ();
 				}
 				if let Some (ref _progress) = _progress {
 					_progress.folder.set_message ("(walking...)");
@@ -591,7 +514,11 @@ pub fn main () -> (Result<(), io::Error>) {
 				let _order = entry_order (&_entry, &_metadata, _walk_index, _flags.batch_order);
 				_batch.push ((_entry, _metadata, _order));
 			} else {
-				_enqueue.send ((_entry, _metadata)) .unwrap ();
+				let _task = HasherTask {
+						path : _entry.into_path (),
+						metadata : _metadata,
+					};
+				_enqueue.send (_task) .unwrap ();
 			}
 		}
 	}
@@ -603,7 +530,11 @@ pub fn main () -> (Result<(), io::Error>) {
 		}
 		_batch.sort_by_key (|&(_, _, _order)| _order);
 		for (_entry, _metadata, _) in _batch.drain (..) {
-			_enqueue.send ((_entry, _metadata)) .unwrap ();
+			let _task = HasherTask {
+					path : _entry.into_path (),
+					metadata : _metadata,
+				};
+			_enqueue.send (_task) .unwrap ();
 		}
 	}
 	
@@ -673,6 +604,127 @@ pub fn main_0 () -> ! {
 	} else {
 		process::exit (0);
 	}
+}
+
+
+
+
+fn execute_hasher <Sink : HashesSink> (_context : HasherContext<Sink>, _relative_path : Option<path::PathBuf>) -> (Result<(), io::Error>) {
+	
+	macro_rules! message {
+		( $( $token : tt )+ ) => (
+			if let Some (ref _progress) = _context.progress {
+				_progress.files.println (format! ( $( $token )+ ));
+			} else {
+				eprintln! ( $( $token )+ );
+			}
+		)
+	}
+	
+	let mut _hash_buffer = Vec::with_capacity (128);
+	
+	loop {
+		
+		let _task = match _context.queue.recv () {
+			Ok (_task) =>
+				_task,
+			Err (crossbeam::channel::RecvError) =>
+				break,
+		};
+		
+		let _path = &_task.path;
+		let _path_for_sink = if let Some (ref _relative_path) = _relative_path {
+			_path.strip_prefix (_relative_path) .unwrap () .as_os_str ()
+		} else {
+			_path.as_os_str ()
+		};
+		let _path_for_sink = if _path_for_sink != "" { _path_for_sink } else { ffi::OsStr::new (".") };
+		
+		let mut _open = fs::OpenOptions::new ();
+		_open.read (true);
+		
+		let mut _file = match _open.open (_path) {
+			Ok (_file) =>
+				_file,
+			Err (_error) => {
+				let mut _sink = _context.sink.lock () .unwrap ();
+				if _context.flags.report_errors_to_stderr {
+					message! ("[ee] [42f1352f]  failed opening file `{}`: `{}`!", _path.to_string_lossy (), _error);
+				}
+				if _context.flags.report_errors_to_sink {
+					_sink.handle (_path_for_sink, _context.flags.hashes_flags.algorithm.invalid_raw) ?;
+					_sink.flush () ?;
+				}
+				_context.errors.lock () .unwrap () .push (_error);
+				if _context.flags.ignore_open_errors {
+					continue;
+				} else {
+					return Ok (());
+				}
+			},
+		};
+		
+		if _context.flags.read_fadvise {
+			let mut _failed = false;
+			unsafe {
+				if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_SEQUENTIAL) != 0 {
+					_failed = true;
+				}
+				if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_NOREUSE) != 0 {
+					_failed = true;
+				}
+				if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_WILLNEED) != 0 {
+					_failed = true;
+				}
+			}
+			if _failed {
+				message! ("[ww] [76280772]  `fadvise` failed!")
+			}
+		}
+		
+		_hash_buffer.clear ();
+		match digest (_context.flags.hashes_flags.algorithm, &mut _file, &mut _hash_buffer) {
+			Ok (()) => {
+				let mut _sink = _context.sink.lock () .unwrap ();
+				_sink.handle (_path_for_sink, &_hash_buffer) ?;
+			},
+			Err (_error) => {
+				let mut _sink = _context.sink.lock () .unwrap ();
+				if _context.flags.report_errors_to_stderr {
+					message! ("[ee] [1aeb2750]  failed reading file `{}`: `{}`!", _path.to_string_lossy (), _error);
+				}
+				if _context.flags.report_errors_to_sink {
+					_sink.handle (_path_for_sink, _context.flags.hashes_flags.algorithm.invalid_raw) ?;
+					_sink.flush () ?;
+				}
+				_context.errors.lock () .unwrap () .push (_error);
+				if _context.flags.ignore_read_errors {
+					continue;
+				} else {
+					return Ok (());
+				}
+			},
+		}
+		
+		if _context.flags.read_fadvise {
+			let mut _failed = false;
+			unsafe {
+				if libc::posix_fadvise (_file.as_raw_fd (), 0, 0, libc::POSIX_FADV_DONTNEED) != 0 {
+					_failed = true;
+				}
+			}
+			if _failed {
+				message! ("[ww] [def753c5]  `fadvise` failed!")
+			}
+		}
+		
+		if let Some (ref _progress) = _context.progress {
+			_progress.files.inc (1);
+			_progress.data.inc (_task.metadata.size ());
+		}
+	}
+	
+	return Ok (());
 }
 
 

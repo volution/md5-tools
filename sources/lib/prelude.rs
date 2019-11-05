@@ -3,6 +3,7 @@
 #![allow (unused_imports) ]
 
 
+pub(crate) use ::std::clone;
 pub(crate) use ::std::cmp;
 pub(crate) use ::std::env;
 pub(crate) use ::std::default;
@@ -17,7 +18,7 @@ pub(crate) use ::std::sync;
 pub(crate) use ::std::thread;
 
 
-pub(crate) use ::std::option::{Option::Some, Option::None};
+pub(crate) use ::std::option::{Option, Option::Some, Option::None};
 pub(crate) use ::std::result::{Result, Result::Ok, Result::Err};
 
 
