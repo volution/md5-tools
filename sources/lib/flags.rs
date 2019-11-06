@@ -19,6 +19,7 @@ pub struct CreateFlags {
 	
 	pub walk_xdev : bool,
 	pub walk_follow : bool,
+	pub walk_skip_marker : path::PathBuf,
 	
 	pub threads_count : usize,
 	pub threads_nice : i8,
@@ -48,8 +49,11 @@ impl <'a> CreateFlags {
 	
 	pub fn argparse (&'a mut self, _parser : &mut argparse::parser::ArgumentParser<'a>) -> () {
 		
-		_parser.refer (&mut self.source_path) .add_argument ("source", argparse::Parse, "source file or folder") .required ();
-		_parser.refer (&mut self.output_path) .add_option (&["--output", "-o"], argparse::Parse, "output file or folder (use `-` for stdout, `.` for auto-detection, or a destination file or folder) (`.` by default)");
+		_parser.refer (&mut self.source_path)
+				.add_argument ("source", argparse::Parse, "source file or folder") .required ();
+		
+		_parser.refer (&mut self.output_path)
+				.add_option (&["--output", "-o"], argparse::Parse, "output file or folder (use `-` for stdout, `.` for auto-detection, or a destination file or folder) (`.` by default)");
 		
 		self.hashes_flags.argparse (_parser);
 		
@@ -69,14 +73,26 @@ impl <'a> CreateFlags {
 				.add_option (&["--follow", "-L"], argparse::StoreTrue, "follow symlinks (disabley by default) (n.b. source is always followed)")
 				.add_option (&["--no-follow"], argparse::StoreFalse, "");
 		
-		_parser.refer (&mut self.threads_count) .add_option (&["--workers-count", "-w"], argparse::Parse, "hashing workers count (16 by default)");
-		_parser.refer (&mut self.threads_nice) .add_option (&["--workers-nice"], argparse::Parse, "set OS process scheduling priority (i.e. `nice`) (19 by default)");
+		_parser.refer (&mut self.walk_skip_marker)
+				.add_option (&["--skip-marker"], argparse::Parse, "skip a folder containing this marker file / symlink (n.b. source is never skipped)")
+				.add_option (&["--skip-md5-excluded"], argparse::StoreConst (path::PathBuf::from (".md5.excluded")), "skip a folder containing the `.md5.excluded` marker file / symlink (n.b. source is never skipped)");
+		
+		_parser.refer (&mut self.threads_count)
+				.add_option (&["--workers-count", "-w"], argparse::Parse, "hashing workers count (16 by default)");
+		
+		_parser.refer (&mut self.threads_nice)
+				.add_option (&["--workers-nice"], argparse::Parse, "set OS process scheduling priority (i.e. `nice`) (19 by default)");
 		
 		self.batch_order = CreateBatchOrder::Inode;
 		
-		_parser.refer (&mut self.queue_size) .add_option (&["--workers-queue"], argparse::Parse, "hashing workers queue size (4096 times the workers count by default)");
-		_parser.refer (&mut self.batch_size) .add_option (&["--workers-batch"], argparse::Parse, "hashing workers batch size (half the workers queue size by default)");
-		_parser.refer (&mut self.batch_order) .add_option (&["--workers-sort"], argparse::Parse, "hashing workers batch sorting (use `walk`, `inode`, `inode-and-size`, or `extent`) (`inode` by default)");
+		_parser.refer (&mut self.queue_size)
+				.add_option (&["--workers-queue"], argparse::Parse, "hashing workers queue size (4096 times the workers count by default)");
+		
+		_parser.refer (&mut self.batch_size)
+				.add_option (&["--workers-batch"], argparse::Parse, "hashing workers batch size (half the workers queue size by default)");
+		
+		_parser.refer (&mut self.batch_order)
+				.add_option (&["--workers-sort"], argparse::Parse, "hashing workers batch sorting (use `walk`, `inode`, `inode-and-size`, or `extent`) (`inode` by default)");
 		
 		self.read_fadvise = true;
 		
@@ -90,16 +106,20 @@ impl <'a> CreateFlags {
 		_parser.refer (&mut self.report_errors_to_sink)
 				.add_option (&["--errors-to-stdout"], argparse::StoreTrue, "on errors output an invalid hash (i.e. `00... */path/...`) (enabled by default)")
 				.add_option (&["--no-errors-to-stdout"], argparse::StoreFalse, "");
+		
 		_parser.refer (&mut self.report_errors_to_stderr)
 				.add_option (&["--errors-to-stderr"], argparse::StoreTrue, "on errors report a message (enabled by default)")
 				.add_option (&["--no-errors-to-stderr"], argparse::StoreFalse, "");
 		
 		_parser.refer (&mut self.ignore_all_errors)
 				.add_option (&["--ignore-all-errors"], argparse::StoreTrue, "ignore all errors (disabled by default)");
+		
 		_parser.refer (&mut self.ignore_walk_errors)
 				.add_option (&["--ignore-walk-errors"], argparse::StoreTrue, "ignore walk errors (i.e. folder reading, perhaps due to permissions) (disabled by default)");
+		
 		_parser.refer (&mut self.ignore_open_errors)
 				.add_option (&["--ignore-open-errors"], argparse::StoreTrue, "ignore open errors (i.e. file opening, perhaps due to permissions) (disabled by default)");
+		
 		_parser.refer (&mut self.ignore_read_errors)
 				.add_option (&["--ignore-read-errors"], argparse::StoreTrue, "ignore open errors (i.e. file reading, perhaps due to I/O) (disabled by default)");
 		

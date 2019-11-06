@@ -381,7 +381,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	let mut _walker = walkdir::WalkDir::new (&_source_path)
 			.same_file_system (_flags.walk_xdev)
 			.follow_links (_flags.walk_follow)
-			.contents_first (true)
+			.contents_first (false)
 			.into_iter ();
 	
 	let mut _walk_index = 0 as u64;
@@ -495,6 +495,40 @@ pub fn main () -> (Result<(), io::Error>) {
 		}
 		
 		if _metadata.is_dir () {
+			
+			if (_flags.walk_skip_marker != path::Path::new ("")) && (_entry.path () != _source_path) {
+				let _skip_path = _entry.path () .join (&_flags.walk_skip_marker);
+				match fs::symlink_metadata (&_skip_path) {
+					Ok (_metadata) => {
+						let _type = _metadata.file_type ();
+						if _type.is_file () || _type.is_symlink () {
+							message! (_progress, "[ii] [44f7b487]  skipping path `{}`!", _entry.path () .to_string_lossy ());
+							_walker.skip_current_dir ();
+							continue;
+						} else if _type.is_dir () {
+							message! (_progress, "[ww] [db643f95]  skipping path `{}`!  (although expected file or symlink)", _entry.path () .to_string_lossy ());
+							_walker.skip_current_dir ();
+							continue;
+						} else {
+							message! (_progress, "[ee] [d72d95df]  failed skipping path `{}`: invalid skip marker;  ignoring!", _entry.path () .to_string_lossy ());
+						}
+					},
+					Err (ref _error) if _error.kind () == io::ErrorKind::NotFound =>
+						(),
+					Err (_error) => {
+						if _flags.report_errors_to_stderr {
+							message! (_progress, "[ee] [0c67e368]  failed skipping path `{}`: `{}`!", _entry.path () .to_string_lossy (), _error);
+						}
+						if _flags.ignore_walk_errors {
+							continue;
+						} else {
+							_errors.push (_error);
+							break;
+						}
+					},
+				}
+			}
+			
 			if let Some (ref _progress) = _progress {
 				_progress.folder.set_message (& _entry.path () .to_string_lossy ());
 				_progress.folder.tick ();
