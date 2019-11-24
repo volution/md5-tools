@@ -153,10 +153,15 @@
 
 << deploy
 	test "${#}" -eq 1
-	exec -- rsync -r -c -I -i -p --chmod 0555 -- \
-			./target/publish/ \
-			"${1}" \
-	#
+	for _file in md5-create md5-diff md5-cpio md5-copy md5-link ; do
+		rsync \
+				-c -I -i \
+				-p --chmod F0555 \
+				-- \
+				"./target/publish/${_file}" \
+				"${1}/${_file}" \
+		#
+	done
 !!
 
 
