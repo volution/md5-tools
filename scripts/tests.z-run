@@ -12,6 +12,9 @@
 
 
 <<== test / md5-diff / generate
+	if test ! -e ./.tests/datasets/ ; then
+		exit -- 0
+	fi
 	printf -- '&&__ %s\n' '../.tests/datasets/'
 	find ./.tests/datasets/ -xdev -xtype f -printf '%P\n' \
 	| sed \
