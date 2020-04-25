@@ -18,20 +18,33 @@ import "syscall"
 
 func main () () {
 	
-	if len (os.Args) != 5 {
+	if len (os.Args) != 7 {
 		panic ("[0071e111]  invalid arguments")
 	}
 	
 	_hashesPath := os.Args[1]
-	_blobsPath := os.Args[2]
-	_targetPath := os.Args[3]
+	_targetPath := os.Args[2]
+	_blobsPath := os.Args[3]
+	_blobsSuffix := os.Args[4]
+	_blobsLevels := -1
+	if _value, _error := strconv.ParseUint (os.Args[5], 10, 16); _error == nil {
+		_blobsLevels = int (_value)
+	} else {
+		panic (_error)
+	}
+	if (_blobsLevels < 0) || (_blobsLevels > 2) {
+		panic ("[ef8c8ebc]  invalid arguments")
+	}
 	_parallelism := 16
-	if _value, _error := strconv.ParseUint (os.Args[4], 10, 16); _error == nil {
+	if _value, _error := strconv.ParseUint (os.Args[6], 10, 16); _error == nil {
 		if _value != 0 {
 			_parallelism = int (_value)
 		}
 	} else {
 		panic (_error)
+	}
+	if (_parallelism < 1) || (_parallelism > 128) {
+		panic ("[047e0205]  invalid arguments")
 	}
 	
 	
@@ -76,7 +89,7 @@ func main () () {
 			for _hash_and_path := range _workersQueue {
 				_hash := _hash_and_path[0]
 				_path := _hash_and_path[1]
-				link (_hash, _path, _blobsPath, _targetPath)
+				link (_hash, _path, _targetPath, _blobsPath, _blobsSuffix, _blobsLevels)
 			}
 			_workersDone.Done ()
 		} ()
@@ -148,14 +161,29 @@ func main () () {
 
 
 
-func link (_hash string, _path string, _blobsPath string, _targetPath string) () {
+func link (_hash string, _path string, _targetPath string, _blobsPath string, _blobsSuffix string, _blobsLevels int) () {
 	
 	
 	// NOTE:  Compute source and target paths...
 	
-	_blobFolder_1 := path.Join (_blobsPath, _hash[0:2])
-	_blobFolder_2 := path.Join (_blobFolder_1, _hash[0:4])
-	_blobFile := path.Join (_blobFolder_2, _hash)
+	var _blobsFolder_X string
+	if _blobsLevels == 0 {
+		_blobsFolder_X = _blobsPath
+	} else if _blobsLevels == 1 {
+		_blobsFolder_1 := path.Join (_blobsPath, _hash[0:2])
+		_blobsFolder_X = _blobsFolder_1
+	} else if _blobsLevels == 2 {
+		_blobsFolder_1 := path.Join (_blobsPath, _hash[0:2])
+		_blobsFolder_2 := path.Join (_blobsFolder_1, _hash[0:4])
+		_blobsFolder_X = _blobsFolder_2
+	} else {
+		panic ("[e48df570]")
+	}
+	
+	_blobFile := path.Join (_blobsFolder_X, _hash)
+	if _blobsSuffix != "" {
+		_blobFile += _blobsSuffix
+	}
 	
 	_targetFile := path.Join (_targetPath, _path)
 	_targetFolder := path.Dir (_targetFile)
