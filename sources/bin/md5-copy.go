@@ -20,20 +20,34 @@ import "syscall"
 
 func main () () {
 	
-	if len (os.Args) != 5 {
+	
+	if len (os.Args) != 7 {
 		panic ("[0071e111]  invalid arguments")
 	}
 	
 	_hashesPath := os.Args[1]
 	_sourcePath := os.Args[2]
 	_targetPath := os.Args[3]
+	_targetSuffix := os.Args[4]
+	_targetLevels := -1
+	if _value, _error := strconv.ParseUint (os.Args[5], 10, 16); _error == nil {
+		_targetLevels = int (_value)
+	} else {
+		panic (_error)
+	}
+	if (_targetLevels < 0) || (_targetLevels > 2) {
+		panic ("[ef8c8ebc]  invalid arguments")
+	}
 	_parallelism := 16
-	if _value, _error := strconv.ParseUint (os.Args[4], 10, 16); _error == nil {
+	if _value, _error := strconv.ParseUint (os.Args[6], 10, 16); _error == nil {
 		if _value != 0 {
 			_parallelism = int (_value)
 		}
 	} else {
 		panic (_error)
+	}
+	if (_parallelism < 1) || (_parallelism > 128) {
+		panic ("[047e0205]  invalid arguments")
 	}
 	
 	
@@ -78,7 +92,7 @@ func main () () {
 			for _hash_and_path := range _workersQueue {
 				_hash := _hash_and_path[0]
 				_path := _hash_and_path[1]
-				copy (_hash, _path, _sourcePath, _targetPath)
+				copy (_hash, _path, _sourcePath, _targetPath, _targetSuffix, _targetLevels)
 			}
 			_workersDone.Done ()
 		} ()
@@ -150,14 +164,33 @@ func main () () {
 
 
 
-func copy (_hash string, _path string, _sourcePath string, _targetPath string) () {
+func copy (_hash string, _path string, _sourcePath string, _targetPath string, _targetSuffix string, _targetLevels int) () {
 	
 	// NOTE:  Compute source and target paths...
 	
 	_sourceFile := path.Join (_sourcePath, _path)
-	_targetFolder_1 := path.Join (_targetPath, _hash[0:2])
-	_targetFolder_2 := path.Join (_targetFolder_1, _hash[0:4])
-	_targetFile := path.Join (_targetFolder_2, _hash)
+	
+	var _targetFolders []string
+	var _targetFolder_X string
+	if _targetLevels == 0 {
+		_targetFolder_X = _targetPath
+	} else if _targetLevels == 1 {
+		_targetFolder_1 := path.Join (_targetPath, _hash[0:2])
+		_targetFolders = append (_targetFolders, _targetFolder_1)
+		_targetFolder_X = _targetFolder_1
+	} else if _targetLevels == 2 {
+		_targetFolder_1 := path.Join (_targetPath, _hash[0:2])
+		_targetFolder_2 := path.Join (_targetFolder_1, _hash[0:4])
+		_targetFolders = append (_targetFolders, _targetFolder_1, _targetFolder_2)
+		_targetFolder_X = _targetFolder_2
+	} else {
+		panic ("[e48df570]")
+	}
+	
+	_targetFile := path.Join (_targetFolder_X, _hash)
+	if _targetSuffix != "" {
+		_targetFile += _targetSuffix
+	}
 	_targetFileTmp := path.Join (_targetPath, fmt.Sprintf (".tmp.%08x.%s", os.Getpid (), _hash))
 	
 	
@@ -218,30 +251,19 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string) (
 	
 	// NOTE:  Check if target folders exist or create...
 	
-	if _stat, _error := os.Lstat (_targetFolder_1); _error == nil {
-		if ! _stat.IsDir () {
-			panic (fmt.Sprintf ("[3aa03105]  invalid target folder `%s`", _targetFolder_1))
-		}
-	} else if os.IsNotExist (_error) {
-//		fmt.Fprintf (os.Stderr, "[dd] [d26e2ffd]  creating target folder `%s`...\n", _targetFolder_1)
-		if _error := os.Mkdir (_targetFolder_1, 0700); (_error != nil) && ! os.IsExist (_error) {
+	for _, _targetFolder := range _targetFolders {
+		if _stat, _error := os.Lstat (_targetFolder); _error == nil {
+			if ! _stat.IsDir () {
+				panic (fmt.Sprintf ("[3aa03105]  invalid target folder `%s`", _targetFolder))
+			}
+		} else if os.IsNotExist (_error) {
+//			fmt.Fprintf (os.Stderr, "[dd] [d26e2ffd]  creating target folder `%s`...\n", _targetFolder)
+			if _error := os.Mkdir (_targetFolder, 0700); (_error != nil) && ! os.IsExist (_error) {
+				panic (_error)
+			}
+		} else {
 			panic (_error)
 		}
-	} else {
-		panic (_error)
-	}
-	
-	if _stat, _error := os.Lstat (_targetFolder_2); _error == nil {
-		if ! _stat.IsDir () {
-			panic (fmt.Sprintf ("[589d7b6b]  invalid target folder `%s`", _targetFolder_2))
-		}
-	} else if os.IsNotExist (_error) {
-//		fmt.Fprintf (os.Stderr, "[dd] [d26e2ffd]  creating target folder `%s`...\n", _targetFolder_2)
-		if _error := os.Mkdir (_targetFolder_2, 0700); (_error != nil) && ! os.IsExist (_error) {
-			panic (_error)
-		}
-	} else {
-		panic (_error)
 	}
 	
 	
