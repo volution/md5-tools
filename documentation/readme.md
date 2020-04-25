@@ -268,7 +268,7 @@ b687bba629fdef9f29ba734f9aac90e0 *./sources/md5-diff.go
 
 Example (it expects a zero delimited file):
 ```
-md5-copy <( tr '\n' '\0' < ./sources/.--2019-11-02-13-54-14.md5 ) ./sources /tmp/blobs 4
+md5-copy <( tr '\n' '\0' < ./sources/.--2019-11-02-13-54-14.md5 ) ./sources /tmp/blobs .blob 1 4
 ```
 ```
 [dd] [922b3386]  cloning `8ecc4a7b226f0c499eed4852d43003e4` -> `sources/bin/md5-create.bash`...
