@@ -215,6 +215,7 @@ impl <'a> HashesFlags {
 #[ derive (Default) ]
 pub struct HashesFormatFlags {
 	pub zero : bool,
+	pub path : bool,
 }
 
 
@@ -224,6 +225,9 @@ impl <'a> HashesFormatFlags {
 		_parser.refer (&mut self.zero)
 				.add_option (&["--zero", "-z"], argparse::StoreTrue, "delimit records by `\\0` (as opposed by `\\n`) (disabled by default)")
 				.add_option (&["--no-zero"], argparse::StoreFalse, "");
+		_parser.refer (&mut self.path)
+				.add_option (&["--paths"], argparse::StoreTrue, "output paths (enabled by default)")
+				.add_option (&["--no-paths"], argparse::StoreFalse, "");
 	}
 }
 

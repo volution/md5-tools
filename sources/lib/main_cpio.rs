@@ -22,6 +22,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	let mut _format_flags = HashesFormatFlags {
 			zero : false,
+			path : true,
 		};
 	
 	let mut _nice_level = 19 as i8;
@@ -50,7 +51,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	let mut _output = io::stdout ();
 	let mut _output = _output.lock ();
 	
-	let mut _sink = StandardHashesSink::new (&mut _output, _format_flags.zero);
+	let mut _sink = StandardHashesSink::new (&mut _output, _format_flags.zero, _format_flags.path);
 	
 	let mut _hash_buffer = Vec::with_capacity (128);
 	let mut _path_buffer = Vec::with_capacity (4 * 1024);

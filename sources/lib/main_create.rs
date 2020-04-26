@@ -279,7 +279,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	};
 	
 	
-	let _sink = StandardHashesSink::new (_output_file, _flags.format_flags.zero);
+	let _sink = StandardHashesSink::new (_output_file, _flags.format_flags.zero, _flags.format_flags.path);
 	let _sink = sync::Arc::new (sync::Mutex::new (_sink));
 	
 	

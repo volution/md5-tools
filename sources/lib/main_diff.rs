@@ -98,6 +98,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	let mut _format_flags = HashesFormatFlags {
 			zero : false,
+			path : true,
 		};
 	
 	let mut _compression_flags = CompressionFlags {
@@ -116,6 +117,10 @@ pub fn main () -> (Result<(), io::Error>) {
 		_parser.refer (&mut _path_left) .add_argument ("dataset-a", argparse::Parse, "source file for dataset A") .required ();
 		_parser.refer (&mut _path_right) .add_argument ("dataset-b", argparse::Parse, "source file for dataset B") .required ();
 		_parser.parse_args_or_exit ();
+	}
+	
+	if !_format_flags.path {
+		return Err (io::Error::new (io::ErrorKind::Other, "[d9b3891e]  paths are mandatory"));
 	}
 	
 	
