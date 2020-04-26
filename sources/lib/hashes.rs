@@ -1,6 +1,7 @@
 
 
 #[ derive (Copy, Clone, Eq, PartialEq) ]
+#[ allow (non_camel_case_types) ]
 pub enum HashAlgorithmKind {
 	MD5,
 	SHA1,
@@ -12,6 +13,7 @@ pub enum HashAlgorithmKind {
 	SHA3_256,
 	SHA3_384,
 	SHA3_512,
+	GIT_SHA1,
 }
 
 
@@ -131,5 +133,16 @@ pub static SHA3_512 : HashAlgorithm = HashAlgorithm {
 		invalid_raw : b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
 		pattern : r"^(?-u)([0-9a-f]{128}) ([ *])(.+)$",
 		suffix : ".sha3-512",
+	};
+
+
+pub static GIT_SHA1 : HashAlgorithm = HashAlgorithm {
+		kind : HashAlgorithmKind::GIT_SHA1,
+		name : "GIT-SHA1", name_lower : "git-sha1",
+		empty :        "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+		invalid :      "0000000000000000000000000000000000000000",
+		invalid_raw : b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",
+		pattern : r"^(?-u)([0-9a-f]{40}) ([ *])(.+)$",
+		suffix : ".git-sha1",
 	};
 

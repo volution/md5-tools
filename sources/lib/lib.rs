@@ -3,6 +3,9 @@
 #![ no_implicit_prelude ]
 
 
+#![ allow (unused_parens) ]
+
+
 pub mod core;
 pub mod digests;
 pub mod flags;
