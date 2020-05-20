@@ -51,6 +51,7 @@ pub fn main () -> (Result<(), io::Error>) {
 	
 	
 	let mut _flags = CreateFlags::default ();
+	_flags.format_flags.path = true;
 	
 	{
 		let mut _parser = argparse::ArgumentParser::new ();
