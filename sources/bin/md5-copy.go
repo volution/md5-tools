@@ -107,15 +107,21 @@ func main () () {
 	for _index := 0; _index < _parallelism; _index += 1 {
 		_workersDone.Add (1)
 		go func () () {
+//			fmt.Fprintf (os.Stderr, "[dd] [23948741]  worker started;\n")
 			for _hash_and_path := range _workersQueue {
 				_hash := _hash_and_path[0]
 				_path := _hash_and_path[1]
+//				fmt.Fprintf (os.Stderr, "[dd] [12ecbee9]  worker copying...\n")
 				copy (_hash, _path, _sourcePath, _targetPath, _targetSuffix, _targetLevels)
+//				fmt.Fprintf (os.Stderr, "[dd] [c699ec13]  worker dequeueing...\n")
 			}
 			_workersDone.Done ()
+//			fmt.Fprintf (os.Stderr, "[dd] [824ab6a0]  worker finished;\n")
 		} ()
 	}
 	
+	
+//	fmt.Fprintf (os.Stderr, "[dd] [ae067149]  feeder started;\n")
 	
 	for {
 		
@@ -172,8 +178,11 @@ func main () () {
 			continue
 		}
 		
+//		fmt.Fprintf (os.Stderr, "[dd] [0f59b583]  feeder enqueueing...\n")
 		_workersQueue <- [2]string { _hash, _path }
 	}
+	
+//	fmt.Fprintf (os.Stderr, "[dd] [fb4ae4f3]  feeder finished;\n")
 	
 	close (_workersQueue)
 	_workersDone.Wait ()
