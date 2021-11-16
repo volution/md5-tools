@@ -1,7 +1,7 @@
 #!/dev/null
 
 
-&& ./build.z-run
-&& ./tests.z-run
-&& ./workbench.z-run
+&& _/build.z-run
+&& _/tests.z-run
+&& _/workbench.z-run
 
