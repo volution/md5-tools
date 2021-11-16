@@ -10,6 +10,7 @@ import "fmt"
 import "io"
 import "os"
 import "path"
+import "path/filepath"
 import "regexp"
 import "strconv"
 import "sync"
@@ -26,9 +27,23 @@ func main () () {
 	}
 	
 	_hashesPath := os.Args[1]
+	
 	_sourcePath := os.Args[2]
+	if _path, _error := filepath.EvalSymlinks (_sourcePath); _error == nil {
+		_sourcePath = _path
+	} else {
+		panic (_error)
+	}
+	
 	_targetPath := os.Args[3]
+	if _path, _error := filepath.EvalSymlinks (_targetPath); _error == nil {
+		_targetPath = _path
+	} else {
+		panic (_error)
+	}
+	
 	_targetSuffix := os.Args[4]
+	
 	_targetLevels := -1
 	if _value, _error := strconv.ParseUint (os.Args[5], 10, 16); _error == nil {
 		_targetLevels = int (_value)
@@ -38,6 +53,7 @@ func main () () {
 	if (_targetLevels < 0) || (_targetLevels > 2) {
 		panic ("[ef8c8ebc]  invalid arguments")
 	}
+	
 	_parallelism := 16
 	if _value, _error := strconv.ParseUint (os.Args[6], 10, 16); _error == nil {
 		if _value != 0 {
