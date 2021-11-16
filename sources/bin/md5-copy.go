@@ -23,7 +23,7 @@ func main () () {
 	
 	
 	if len (os.Args) != 7 {
-		panic ("[0071e111]  invalid arguments")
+		panic ("[0071e111]  invalid arguments, expected:  <hashes> <source> <target> <target-suffix> <target-levels> <parallelism>")
 	}
 	
 	_hashesPath := os.Args[1]
@@ -32,14 +32,14 @@ func main () () {
 	if _path, _error := filepath.EvalSymlinks (_sourcePath); _error == nil {
 		_sourcePath = _path
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[2c3601cc]  invalid source path (eval-links failed) `%s`:  %s", _sourcePath, _error))
 	}
 	
 	_targetPath := os.Args[3]
 	if _path, _error := filepath.EvalSymlinks (_targetPath); _error == nil {
 		_targetPath = _path
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[43402d50]  invalid target path (eval-links failed) `%s`:  %s", _targetPath, _error))
 	}
 	
 	_targetSuffix := os.Args[4]
@@ -48,10 +48,10 @@ func main () () {
 	if _value, _error := strconv.ParseUint (os.Args[5], 10, 16); _error == nil {
 		_targetLevels = int (_value)
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[7f407004]  invalid target levels (parse failed) `%s`:  %s", os.Args[5], _error))
 	}
 	if (_targetLevels < 0) || (_targetLevels > 2) {
-		panic ("[ef8c8ebc]  invalid arguments")
+		panic (fmt.Sprintf ("[ef8c8ebc]  invalid target levels (must be between 0 and 2) `%s`", _targetLevels))
 	}
 	
 	_parallelism := 16
@@ -60,10 +60,10 @@ func main () () {
 			_parallelism = int (_value)
 		}
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[04d78872]  invalid parallelism (parse failed) `%s`:  %s", os.Args[6], _error))
 	}
 	if (_parallelism < 1) || (_parallelism > 128) {
-		panic ("[047e0205]  invalid arguments")
+		panic (fmt.Sprintf ("[29f6c5c4]  invalid parallelism (must be between 1 and 128) `%s`", _parallelism))
 	}
 	
 	
@@ -76,7 +76,7 @@ func main () () {
 	} else if os.IsNotExist (_error) {
 		panic (fmt.Sprintf ("[e8d2029c]  invalid source folder (not found) `%s`", _sourcePath))
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[9fd05bc7]  invalid source folder (unexpected error) `%s`:  %s", _sourcePath, _error))
 	}
 	
 	if _stat, _error := os.Stat (_targetPath); _error == nil {
@@ -88,15 +88,17 @@ func main () () {
 	} else if os.IsNotExist (_error) {
 		panic (fmt.Sprintf ("[b9843cd6]  invalid target folder (not found) `%s`", _targetPath))
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[5dacb884]  invalid target folder (unexpected error) `%s`:  %s", _targetPath, _error))
 	}
 	
 	
 	var _hashesStream *bufio.Reader
 	if _stream_0 , _error := os.Open (_hashesPath); _error == nil {
 		_hashesStream = bufio.NewReaderSize (_stream_0, 16 * 1024 * 1024)
+	} else if os.IsNotExist (_error) {
+		panic (fmt.Sprintf ("[931f9e3f]  invalid hashes file (not found) `%s`", _hashesPath))
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[3d79f70b]  invalid hashes file (unexpected error) `%s`:  %s", _hashesPath, _error))
 	}
 	
 	
@@ -133,7 +135,7 @@ func main () () {
 				panic (fmt.Sprintf ("[9e33c96b]  invalid line `%s`", _line))
 			}
 		} else {
-			panic (_error)
+			panic (fmt.Sprintf ("[14519a7a]  unexpected error:  %s", _error))
 		}
 		
 		var _hash string
@@ -224,7 +226,7 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string, _
 	} else if _error, _ok := _error.(*os.PathError); _ok && _error.Err == syscall.ENOTDIR {
 		panic (fmt.Sprintf ("[26c24a68]  invalid target file (parent non folder) `%s`", _targetFile))
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[87e53618]  unexpected error:  %s", _error))
 	}
 	
 	
@@ -247,21 +249,21 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string, _
 		fmt.Fprintf (os.Stderr, "[ee] [9c5ed744]  invalid source file (parent non folder) `%s`;  ignoring!\n", _sourceFile)
 		return
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[88e79792]  unexpected error:  %s", _error))
 	}
 	
 	var _sourceStream *os.File
 	if _stream_0, _error := os.Open (_sourceFile); _error == nil {
 		_sourceStream = _stream_0
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[81408611]  unexpected error:  %s", _error))
 	}
 	
 	var _sourceStat os.FileInfo
 	if _stat_0, _error := _sourceStream.Stat (); _error == nil {
 		_sourceStat = _stat_0
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[5d4649c4]  unexpected error:  %s", _error))
 	}
 	
 	
@@ -275,10 +277,10 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string, _
 		} else if os.IsNotExist (_error) {
 //			fmt.Fprintf (os.Stderr, "[dd] [d26e2ffd]  creating target folder `%s`...\n", _targetFolder)
 			if _error := os.Mkdir (_targetFolder, 0700); (_error != nil) && ! os.IsExist (_error) {
-				panic (_error)
+				panic (fmt.Sprintf ("[7946185f]  unexpected error:  %s", _error))
 			}
 		} else {
-			panic (_error)
+			panic (fmt.Sprintf ("[33e41e43]  unexpected error:  %s", _error))
 		}
 	}
 	
@@ -293,37 +295,37 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string, _
 		_sourceStream.Close ()
 		return
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[cd5941c6]  unexpected error:  %s", _error))
 	}
 	
 	{
 		var _error error
 		_error = Fadvise (_sourceStream.Fd (), 0, 0, FADV_SEQUENTIAL)
-		if _error != nil { panic (_error) }
+		if _error != nil { panic (fmt.Sprintf ("[0dce2e31]  unexpected error:  %s", _error)) }
 		_error = Fadvise (_sourceStream.Fd (), 0, 0, FADV_NOREUSE)
-		if _error != nil { panic (_error) }
+		if _error != nil { panic (fmt.Sprintf ("[96737a83]  unexpected error:  %s", _error)) }
 		_error = Fadvise (_sourceStream.Fd (), 0, 0, FADV_WILLNEED)
-		if _error != nil { panic (_error) }
+		if _error != nil { panic (fmt.Sprintf ("[b749c725]  unexpected error:  %s", _error)) }
 	}
 	
 	var _dataSize int64
 	if _size_0, _error := io.Copy (_targetStreamTmp_1, _sourceStream); _error == nil {
 		_dataSize = _size_0
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[4ea17054]  unexpected error:  %s", _error))
 	}
 	
 	{
 		var _error error
 		_error = Fadvise (_sourceStream.Fd (), 0, 0, FADV_DONTNEED)
-		if _error != nil { panic (_error) }
+		if _error != nil { panic (fmt.Sprintf ("[210d6e1f]  unexpected error:  %s", _error)) }
 	}
 	
 	if _error := _targetStreamTmp_1.Chmod (0400); _error != nil {
-		panic (_error)
+		panic (fmt.Sprintf ("[b3be47d6]  unexpected error:  %s", _error))
 	}
 	if _error := _targetStreamTmp_1.Sync (); _error != nil {
-		panic (_error)
+		panic (fmt.Sprintf ("[8bd8f281]  unexpected error:  %s", _error))
 	}
 	
 	
@@ -333,7 +335,7 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string, _
 	if _stream_0, _error := os.Open (_targetFileTmp); _error == nil {
 		_targetStreamTmp_2 = _stream_0
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[05b96651]  unexpected error:  %s", _error))
 	}
 	
 	
@@ -343,14 +345,14 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string, _
 	if _stat, _error := _targetStreamTmp_1.Stat (); _error == nil {
 		_targetStatTmp_1 = _stat
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[5a22c74c]  unexpected error:  %s", _error))
 	}
 	
 	var _targetStatTmp_2 os.FileInfo
 	if _stat, _error := _targetStreamTmp_2.Stat (); _error == nil {
 		_targetStatTmp_2 = _stat
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[2a9b35cc]  unexpected error:  %s", _error))
 	}
 	
 	if ! os.SameFile (_targetStatTmp_1, _targetStatTmp_2) {
@@ -375,7 +377,7 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string, _
 			panic (fmt.Sprintf ("[fe9fa8a7]  invalid target file (invalid size) `%s`", _targetFileTmp))
 		}
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[10892bcb]  unexpected error:  %s", _error))
 	}
 	_hashTmp := hex.EncodeToString (_hasher.Sum (nil) [:])
 	if _hashTmp != _hash {
@@ -386,7 +388,7 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string, _
 	// NOTE:  Rename temporary target file to actual target file...
 	
 	if _error := os.Rename (_targetFileTmp, _targetFile); _error != nil {
-		panic (_error)
+		panic (fmt.Sprintf ("[90d364ab]  unexpected error:  %s", _error))
 	}
 	
 	
@@ -396,7 +398,7 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string, _
 	if _stat_0, _error := os.Lstat (_targetFile); _error == nil {
 		_targetStat = _stat_0
 	} else {
-		panic (_error)
+		panic (fmt.Sprintf ("[aa2d7afe]  unexpected error:  %s", _error))
 	}
 	
 	if ! os.SameFile (_targetStatTmp_1, _targetStat) {
@@ -409,17 +411,17 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string, _
 	{
 		var _error error
 		_error = Fadvise (_targetStreamTmp_1.Fd (), 0, 0, FADV_DONTNEED)
-		if _error != nil { panic (_error) }
+		if _error != nil { panic (fmt.Sprintf ("[11fac409]  unexpected error:  %s", _error)) }
 	}
 	
 	if _error := _targetStreamTmp_1.Close (); _error != nil {
-		panic (_error)
+		panic (fmt.Sprintf ("[293f4d9a]  unexpected error:  %s", _error))
 	}
 	if _error := _targetStreamTmp_2.Close (); _error != nil {
-		panic (_error)
+		panic (fmt.Sprintf ("[a7f2341e]  unexpected error:  %s", _error))
 	}
 	if _error := _sourceStream.Close (); _error != nil {
-		panic (_error)
+		panic (fmt.Sprintf ("[724b639a]  unexpected error:  %s", _error))
 	}
 	
 	
@@ -431,13 +433,13 @@ func copy (_hash string, _path string, _sourcePath string, _targetPath string, _
 			_folderPath = path.Dir (_folderPath)
 			if _folderStream, _error := os.OpenFile (_folderPath, os.O_RDONLY | syscall.O_DIRECTORY, 0); _error == nil {
 				if _error := _folderStream.Sync (); _error != nil {
-					panic (_error)
+					panic (fmt.Sprintf ("[2e17ce7d]  unexpected error:  %s", _error))
 				}
 				if _error := _folderStream.Close (); _error != nil {
-					panic (_error)
+					panic (fmt.Sprintf ("[09934cf8]  unexpected error:  %s", _error))
 				}
 			} else {
-				panic (_error)
+				panic (fmt.Sprintf ("[e55f9fa4]  unexpected error:  %s", _error))
 			}
 			if _folderPath == _targetPath {
 				break
