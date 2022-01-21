@@ -1,4 +1,17 @@
 
+
+
+
+![logo](./documentation/logo.png)
+
+
+
+
+----
+
+
+
+
 # **md5-tools** -- lightweight Rust MD5/SHA tools
 
 
@@ -343,3 +356,4 @@ under a different license, please send an email to the authors,
 stating the licensing requirements, accompanied with the reasons
 and other details; then, depending on the situation, the authors might
 release the sources and/or documentation under a different license.
+
