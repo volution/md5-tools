@@ -312,7 +312,7 @@ md5-copy <( tr '\n' '\0' < ./sources/.--2019-11-02-13-54-14.md5 ) ./sources /tmp
 
 Checkout the sources:
 ```
-git clone https://github.com/cipriancraciun/md5-tools
+git clone https://github.com/volution/md5-tools
 ```
 ```
 cd ./md5-tools
