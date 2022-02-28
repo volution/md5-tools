@@ -33,7 +33,7 @@
 	"${ZRUN[@]}" ':: build / rust / debug' --bin "${_binary}" --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		"./target/${CARGO_TARGET}/debug/${_binary}" "${@}" \
+		"./.outputs/rust/${CARGO_TARGET}/debug/${_binary}" "${@}" \
 	#
 !!
 
@@ -45,7 +45,7 @@
 	"${ZRUN[@]}" ':: build / rust / release' --bin "${_binary}" --quiet
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		"./target/${CARGO_TARGET}/release/${_binary}" "${@}" \
+		"./.outputs/rust/${CARGO_TARGET}/release/${_binary}" "${@}" \
 	#
 	
 !!
@@ -80,7 +80,7 @@
 	"${ZRUN[@]}" ':: build / go / md5-diff'
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		./target/go/md5-diff "${@}" \
+		./.outputs/go/md5-diff "${@}" \
 	#
 !!
 
@@ -93,7 +93,7 @@
 	"${ZRUN[@]}" ':: build / go / md5-copy'
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		./target/go/md5-copy "${@}" \
+		./.outputs/go/md5-copy "${@}" \
 	#
 !!
 
@@ -106,7 +106,7 @@
 	"${ZRUN[@]}" ':: build / go / md5-link'
 	exec -- \
 		/usr/bin/time -f '(( elapsed: %E (user: %U, kernel: %S), CPU: %P, memory: %M (faults: %F, swapped: %W), I/O: %I / %O (waits: %w) ))' -- \
-		./target/go/md5-link "${@}" \
+		./.outputs/go/md5-link "${@}" \
 	#
 !!
 
@@ -117,13 +117,13 @@
 
 --<< build / go
 	test "${#}" -eq 1 ; _tool="${1}" ; shift -- 1
-	mkdir -p -- ./target/go
+	mkdir -p -- ./.outputs/go
 	test -e "./sources/bin/${_tool}.go"
 	exec -- go build \
 			-ldflags 'all=-s -extld=gcc -extldflags=-static' \
 			-gcflags 'all=-l=4' \
 			-trimpath \
-			-o "./target/go/${_tool}" \
+			-o "./.outputs/go/${_tool}" \
 			"${@}" \
 			-- \
 			"./sources/bin/${_tool}.go" \
@@ -133,41 +133,41 @@
 
 
 
-<< publish
+<< deploy / release
 	test "${#}" -eq 0
-	if test -e ./target/publish ; then
-		rm -R ./target/publish
+	if test -e ./.outputs/release ; then
+		rm -R ./.outputs/release
 	fi
-	mkdir -- ./target/publish
+	mkdir -- ./.outputs/release
 	export -- CARGO_TARGET="${CARGO_TARGET:-x86_64-unknown-linux-gnu}"
 	"${ZRUN[@]}" ':: build / rust / release' --quiet
 	"${ZRUN[@]}" ':: build / go / md5-copy'
 	"${ZRUN[@]}" ':: build / go / md5-link'
-	cp -T -- "./target/${CARGO_TARGET}/release/md5-create" ./target/publish/md5-create
-	cp -T -- "./target/${CARGO_TARGET}/release/md5-diff" ./target/publish/md5-diff
-	cp -T -- "./target/${CARGO_TARGET}/release/md5-cpio" ./target/publish/md5-cpio
-	cp -T -- ./target/go/md5-copy ./target/publish/md5-copy
-	cp -T -- ./target/go/md5-link ./target/publish/md5-link
+	cp -T -- "./.outputs/rust/${CARGO_TARGET}/release/md5-create" ./.outputs/release/md5-create
+	cp -T -- "./.outputs/rust/${CARGO_TARGET}/release/md5-diff" ./.outputs/release/md5-diff
+	cp -T -- "./.outputs/rust/${CARGO_TARGET}/release/md5-cpio" ./.outputs/release/md5-cpio
+	cp -T -- ./.outputs/go/md5-copy ./.outputs/release/md5-copy
+	cp -T -- ./.outputs/go/md5-link ./.outputs/release/md5-link
 !!
 
 
-<< deploy
-	test "${#}" -eq 1
+<< deploy / publish
+	test "${#}" -eq 0
 	for _file in md5-create md5-diff md5-cpio md5-copy md5-link ; do
 		rsync \
 				-c -I -i \
 				-p --chmod F0555 \
 				-- \
-				"./target/publish/${_file}" \
-				"${1}/${_file}" \
+				"./.outputs/release/${_file}" \
+				"./.publish/${_file}" \
 		#
 	done
 !!
 
 
-<< publish + deploy
-	test "${#}" -ge 1
-	"${ZRUN[@]}" ':: publish'
-	exec -- "${ZRUN[@]}" ':: deploy' "${@}"
+<< deploy / release + publish
+	test "${#}" -eq 0
+	"${ZRUN[@]}" ':: deploy / release'
+	exec -- "${ZRUN[@]}" ':: deploy / publish'
 !!
 

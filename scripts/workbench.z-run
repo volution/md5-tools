@@ -4,21 +4,27 @@
 
 
 << workbench / scratch / initialize
+	
 	test "${#}" -eq 0
-	if test ! -d ./.scratch ; then
-		_scratch_store="${TMPDIR:-/tmp}/rust--${UID}--${RANDOM}-${RANDOM}-${RANDOM}-${RANDOM}"
-		mkdir -- "${_scratch_store}"
-		_scratch_store="$( exec -- readlink -e -- "${_scratch_store}" )"
-		ln -s -f -T -- "${_scratch_store}" ./.scratch
+	
+	if test ! -d ./.outputs ; then
+		if test -h ./.outputs ; then
+			_outputs_store="$( exec -- readlink -f -- ./.outputs )"
+		else
+			_outputs_store="${TMPDIR:-/tmp}/workspace--${UID}--${RANDOM}-${RANDOM}-${RANDOM}-${RANDOM}"
+		fi
+		mkdir -- "${_outputs_store}"
+		if test ! -e ./.outputs ; then
+			_outputs_store="$( exec -- readlink -e -- "${_outputs_store}" )"
+			ln -s -f -T -- "${_outputs_store}" ./.outputs
+		fi
 	fi
-	for _folder in rustup cargo rustout ; do
-		if test ! -d "./.scratch/${_folder}" ; then
-			mkdir -- "./.scratch/${_folder}"
+	
+	for _folder in rust go rustup cargo ; do
+		if test ! -d "./.outputs/${_folder}" ; then
+			mkdir -- "./.outputs/${_folder}"
 		fi
 	done
-	if test ! -d ./target ; then
-		ln -s -f -T -- ./.scratch/rustout ./target
-	fi
 !!
 
 
@@ -26,14 +32,14 @@
 
 << workbench / rustup / initialize
 	test "${#}" -eq 0
-	test ! -e ./.scratch/rustup/.initialized
-	curl -s -o ./.scratch/rustup/rustup-init.tmp -- https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
-	chmod +x -- ./.scratch/rustup/rustup-init.tmp
-	mv -n -T -- ./.scratch/rustup/rustup-init.tmp ./.scratch/rustup/rustup-init
-	export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.scratch/rustup )"
-	export -- CARGO_HOME="$( exec -- readlink -e -- ./.scratch/cargo )"
-	nice -n 19 -- ./.scratch/rustup/rustup-init --profile minimal --no-modify-path --quiet -y
-	touch -- ./.scratch/rustup/.initialized
+	test ! -e ./.outputs/rustup/.initialized
+	curl -s -o ./.outputs/rustup/rustup-init.tmp -- https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
+	chmod +x -- ./.outputs/rustup/rustup-init.tmp
+	mv -n -T -- ./.outputs/rustup/rustup-init.tmp ./.outputs/rustup/rustup-init
+	export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.outputs/rustup )"
+	export -- CARGO_HOME="$( exec -- readlink -e -- ./.outputs/cargo )"
+	nice -n 19 -- ./.outputs/rustup/rustup-init --profile minimal --no-modify-path --quiet -y
+	touch -- ./.outputs/rustup/.initialized
 !!
 
 
@@ -56,9 +62,9 @@
 
 
 << workbench / cargo / run
-	export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.scratch/rustup )"
-	export -- CARGO_HOME="$( exec -- readlink -e -- ./.scratch/cargo )"
-	export -- CARGO_TARGET_DIR="$( exec -- readlink -e -- ./.scratch/rustout )"
+	export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.outputs/rustup )"
+	export -- CARGO_HOME="$( exec -- readlink -e -- ./.outputs/cargo )"
+	export -- CARGO_TARGET_DIR="$( exec -- readlink -e -- ./.outputs/rust )"
 	export -- PATH="$( exec -- readlink -e -- "${RUSTUP_HOME}/toolchains/stable-x86_64-unknown-linux-gnu/bin" ):$( exec -- readlink -e -- "${CARGO_HOME}/bin" ):${PATH}"
 	_rustflags=(
 			--remap-path-prefix "$( exec -- readlink -e -- . )=/home/build"
@@ -82,9 +88,9 @@
 !!
 
 << workbench / rustup / run
-	export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.scratch/rustup )"
-	export -- CARGO_HOME="$( exec -- readlink -e -- ./.scratch/cargo )"
-	export -- CARGO_TARGET_DIR="$( exec -- readlink -e -- ./.scratch/rustout )"
+	export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.outputs/rustup )"
+	export -- CARGO_HOME="$( exec -- readlink -e -- ./.outputs/cargo )"
+	export -- CARGO_TARGET_DIR="$( exec -- readlink -e -- ./.outputs/rust )"
 	export -- PATH="$( exec -- readlink -e -- "${RUSTUP_HOME}/toolchains/stable-x86_64-unknown-linux-gnu/bin" ):$( exec -- readlink -e -- "${CARGO_HOME}/bin" ):${PATH}"
 	exec -- nice -n 19 -- rustup "${@}"
 !!
@@ -103,5 +109,5 @@
 		https://s3.dockerproject.org/darwin/v2/MacOSX10.11.sdk.tar.xz
 ##}}
 
-:: workbench / cargo / target / x86_64-apple-darwin :: export -- CARGO_TARGET=x86_64-apple-darwin CARGO_CROSS_BIN=./.scratch/osxcross/bin CARGO_CROSS_RUSTFLAGS='-C linker=x86_64-apple-darwin14-clang -C ar=x86_64-apple-darwin14-ar'
+:: workbench / cargo / target / x86_64-apple-darwin :: export -- CARGO_TARGET=x86_64-apple-darwin CARGO_CROSS_BIN=./.outputs/osxcross/bin CARGO_CROSS_RUSTFLAGS='-C linker=x86_64-apple-darwin14-clang -C ar=x86_64-apple-darwin14-ar'
 
