@@ -46,7 +46,7 @@ pub fn digest_0 <Hash : digest::Digest + io::Write, Input : io::Read> (_input : 
 	let mut _hasher = Hash::new ();
 	io::copy (_input, &mut _hasher) ?;
 	
-	let _hash = _hasher.result ();
+	let _hash = _hasher.finalize ();
 	_output.extend_from_slice (_hash.as_slice ());
 	
 	return Ok (());
@@ -63,9 +63,9 @@ pub fn digest_git_sha1 <Input : io::Read> (_input : &mut Input, _output : &mut V
 	
 	let _ = write! (_hasher, "blob {}\0", _buffer.len ());
 	
-	_hasher.input (_buffer);
+	_hasher.update (_buffer);
 	
-	let _hash = _hasher.result ();
+	let _hash = _hasher.finalize ();
 	_output.extend_from_slice (_hash.as_slice ());
 	
 	return Ok (());

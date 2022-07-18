@@ -24,7 +24,6 @@ struct HasherContext <Sink : HashesSink>  {
 	sink : sync::Arc<sync::Mutex<Sink>>,
 	errors : sync::Arc<sync::Mutex<Vec<io::Error>>>,
 	progress : Option<Progress>,
-	done : crossbeam::sync::WaitGroup,
 }
 
 
@@ -366,7 +365,6 @@ pub fn main () -> (Result<(), io::Error>) {
 				sink : sync::Arc::clone (&_sink),
 				errors : sync::Arc::clone (&_threads_errors),
 				progress : _progress.clone (),
-				done : _done.clone (),
 			};
 		
 		let _relative_path = _relative_path.clone ();
@@ -531,7 +529,7 @@ pub fn main () -> (Result<(), io::Error>) {
 			}
 			
 			if let Some (ref _progress) = _progress {
-				_progress.folder.set_message (& _entry.path () .to_string_lossy ());
+				_progress.folder.set_message (_entry.path () .to_string_lossy () .into_owned ());
 				_progress.folder.tick ();
 			}
 		}
