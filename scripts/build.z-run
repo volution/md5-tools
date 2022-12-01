@@ -60,7 +60,7 @@
 
 << build / rust / release
 	export -- CARGO_INCREMENTAL=0
-	export -- CARGO_EXTRA_RUSTFLAGS='-C link-args=-s'
+	export -- CARGO_EXTRA_RUSTFLAGS='-C link-args=-s -C target-feature=+crt-static -C relocation-model=pic'
 	exec -- "${ZRUN[@]}" ':: build / rust' --release "${@}"
 !!
 
