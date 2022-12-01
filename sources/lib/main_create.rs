@@ -371,7 +371,12 @@ pub fn main () -> (Result<(), io::Error>) {
 		
 		let _relative_path = _relative_path.clone ();
 		
-		let _completion = thread::spawn (move || execute_hasher (_context, _relative_path));
+		let _done = _done.clone ();
+		let _completion = thread::spawn (move || {
+				let _outcome = execute_hasher (_context, _relative_path);
+				drop (_done);
+				_outcome
+			});
 		
 		_completions.push (_completion);
 	}
