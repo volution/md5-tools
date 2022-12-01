@@ -267,7 +267,9 @@ pub fn main () -> (Result<(), io::Error>) {
 	}
 	let (_output_file, _output_stat) = if let Some ((_, ref _output_path_tmp)) = _output_path_and_tmp {
 		let mut _output_file = fs::OpenOptions::new () .create_new (true) .write (true) .open (_output_path_tmp) ?;
-		_output_file.set_permissions (fs::Permissions::from_mode (0o600)) ?;
+		if let Err (_error) = _output_file.set_permissions (fs::Permissions::from_mode (0o600)) {
+			eprintln! ("[ii] [c892431d]  failed making read-only `{}`:  {};  ignoring!", _output_path_tmp.to_string_lossy (), _error);
+		}
 		let _output_stat = _output_file.metadata () ?;
 		(_output_file, Some (_output_stat))
 	} else {
