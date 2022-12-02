@@ -62,18 +62,22 @@
 
 
 << workbench / cargo / run
-	export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.outputs/rustup )"
-	export -- CARGO_HOME="$( exec -- readlink -e -- ./.outputs/cargo )"
 	export -- CARGO_TARGET_DIR="$( exec -- readlink -e -- ./.outputs/rust )"
-	export -- PATH="$( exec -- readlink -e -- "${RUSTUP_HOME}/toolchains/stable-x86_64-unknown-linux-gnu/bin" ):$( exec -- readlink -e -- "${CARGO_HOME}/bin" ):${PATH}"
 	_rustflags=(
 			--remap-path-prefix "$( exec -- readlink -e -- . )=/home/build"
 			--remap-path-prefix "$( exec -- readlink -e -- ./sources )=/home/build/sources"
-			--remap-path-prefix "$( exec -- readlink -m -- "${HOME}/.cargo/registry/src" )=/home/build/cargo"
 			--remap-path-prefix "${HOME}/.cargo/registry/src=/home/build/cargo"
-			--remap-path-prefix "$( exec -- readlink -m -- "${CARGO_HOME}/registry/src" )=/home/build/cargo"
-			--remap-path-prefix "${CARGO_HOME}/registry/src=/home/build/cargo"
+			--remap-path-prefix "$( exec -- readlink -m -- "${HOME}/.cargo/registry/src" )=/home/build/cargo"
 		)
+	if test -e ./.outputs/rustup ; then
+		export -- RUSTUP_HOME="$( exec -- readlink -e -- ./.outputs/rustup )"
+		export -- CARGO_HOME="$( exec -- readlink -e -- ./.outputs/cargo )"
+		export -- PATH="$( exec -- readlink -e -- "${RUSTUP_HOME}/toolchains/stable-x86_64-unknown-linux-gnu/bin" ):$( exec -- readlink -e -- "${CARGO_HOME}/bin" ):${PATH}"
+		_rustflags+=(
+				--remap-path-prefix "${CARGO_HOME}/registry/src=/home/build/cargo"
+				--remap-path-prefix "$( exec -- readlink -m -- "${CARGO_HOME}/registry/src" )=/home/build/cargo"
+			)
+	fi
 	export -- RUSTFLAGS="${_rustflags[*]}"
 	if test -n "${CARGO_CROSS_BIN:-}" ; then
 		PATH="$( exec -- readlink -e -- "${CARGO_CROSS_BIN}" ):${PATH}"
