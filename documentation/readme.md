@@ -2,7 +2,7 @@
 
 
 
-![logo](./documentation/logo.png)
+![logo](./documentation/assets/github-banner.png)
 
 
 
