@@ -14,6 +14,7 @@ pub enum HashAlgorithmKind {
 	SHA3_384,
 	SHA3_512,
 	GIT_SHA1,
+	CRC32,
 }
 
 
@@ -145,4 +146,16 @@ pub static GIT_SHA1 : HashAlgorithm = HashAlgorithm {
 		pattern : r"^(?-u)([0-9a-f]{40}) ([ *])(.+)$",
 		suffix : ".git-sha1",
 	};
+
+
+pub static CRC32 : HashAlgorithm = HashAlgorithm {
+		kind : HashAlgorithmKind::CRC32,
+		name : "CRC32", name_lower : "crc32",
+		empty :        "00000000",
+		invalid :      "ffffffff",
+		invalid_raw : b"\xff\xff\xff\xff",
+		pattern : r"^(?-u)([0-9a-f]{8}) ([ *])(.+)$",
+		suffix : ".crc32",
+	};
+
 

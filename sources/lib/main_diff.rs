@@ -58,6 +58,7 @@ struct Diff {
 enum DiffEntry<K> {
 	UniqueLeft (Vec<K>),
 	UniqueRight (Vec<K>),
+	#[ allow (dead_code) ]
 	Matching (Vec<K>, Vec<K>),
 	Conflicting (Vec<K>, Vec<K>),
 }

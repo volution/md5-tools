@@ -29,6 +29,7 @@ pub(crate) use ::std::rc::Rc;
 pub(crate) use ::std::vec::Vec;
 pub(crate) use ::std::string::String;
 pub(crate) use ::std::collections::HashMap;
+pub(crate) use ::std::ops::Fn;
 
 
 pub(crate) use ::std::eprintln;

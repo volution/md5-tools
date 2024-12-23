@@ -204,6 +204,7 @@ impl <'a> HashesFlags {
 				.add_option (&["--sha3-384"], argparse::StoreConst (&SHA3_384), "create/expect SHA3-384 hashes")
 				.add_option (&["--sha3-512"], argparse::StoreConst (&SHA3_512), "create/expect SHA3-512 hashes")
 				.add_option (&["--git-sha1"], argparse::StoreConst (&GIT_SHA1), "create/expect Git specific SHA1 hashes")
+				.add_option (&["--crc32"], argparse::StoreConst (&CRC32), "create/expect Git specific SHA1 hashes")
 			;
 	}
 }
